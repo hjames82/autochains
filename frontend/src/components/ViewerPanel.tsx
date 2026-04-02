@@ -148,8 +148,25 @@ export default function ViewerPanel({ state }: Props) {
     }
   }, [initScene])
 
+  const clearModelGroup = useCallback(() => {
+    if (!sceneRef.current) return
+    const { modelGroup, camera, controls } = sceneRef.current
+    while (modelGroup.children.length > 0) {
+      const child = modelGroup.children[0]
+      modelGroup.remove(child)
+      if ((child as THREE.Mesh).geometry) (child as THREE.Mesh).geometry.dispose()
+    }
+    camera.position.set(0, 40, 80)
+    controls.target.set(0, 10, 0)
+    controls.update()
+  }, [])
+
   useEffect(() => {
-    if (!modelUrl || !sceneRef.current) return
+    if (!modelUrl) {
+      clearModelGroup()
+      return
+    }
+    if (!sceneRef.current) return
     const { modelGroup, camera, controls } = sceneRef.current
 
     while (modelGroup.children.length > 0) {
