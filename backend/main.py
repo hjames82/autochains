@@ -314,6 +314,11 @@ async def swap(job_id: str, component: str):
             detail=f"Job '{job_id}' has no stored SVG data for swap.",
         )
 
+    # Set status to 'pending' synchronously before scheduling the background
+    # task so that back-to-back swap requests are rejected by the status guard
+    # above (status != 'done') rather than racing into concurrent rebuilds.
+    job["status"] = "pending"
+
     loop = asyncio.get_event_loop()
     loop.run_in_executor(executor, _run_swap_sync, job_id, component)
 
