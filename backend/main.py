@@ -193,7 +193,10 @@ def _run_swap_sync(
         comp_br, cut_tool = builders[component](results)
 
         if cut_tool is not None and not cut_tool.is_empty():
-            base_br = results[0]
+            from engine.components import _find_base_body
+            base_br, _ = _find_base_body(results)
+            if base_br is None:
+                base_br = results[0]
             new_bodies = []
             for body in base_br.bodies:
                 try:
@@ -203,7 +206,7 @@ def _run_swap_sync(
                     progress(f"  WARNING: boolean cut failed ({e}); keeping original body.")
                     new_bodies.append(body)
             base_br.bodies = new_bodies
-            progress(f"  Applied pocket cut to base body.")
+            progress(f"  Applied pocket cut to base body (role={base_br.role!r}).")
 
         results.append(comp_br)
         progress(f"  Appended '{comp_br.name}' to scene ({len(comp_br.bodies)} solid(s)).")
