@@ -142,27 +142,76 @@ async def generate(
 SWAP_COMPONENTS = {"nfc", "hook", "loop", "logo"}
 
 
+def _apply_component(results, component: str, progress) -> None:
+    """
+    Build *component*, apply any boolean cut to the base body, and append
+    the BodyResult to *results* (mutates in-place).
+    """
+    from engine.components import (
+        build_nfc, build_hook, build_loop, build_logo, _find_base_body,
+    )
+
+    builders = {
+        "nfc": build_nfc,
+        "hook": build_hook,
+        "loop": build_loop,
+        "logo": build_logo,
+    }
+
+    progress(f"  Building '{component}' component ...")
+    comp_br, cut_tool = builders[component](results)
+
+    if cut_tool is not None and not cut_tool.is_empty():
+        base_br, _ = _find_base_body(results)
+        if base_br is None:
+            base_br = results[0]
+        new_bodies = []
+        for body in base_br.bodies:
+            try:
+                cut_body = body - cut_tool
+                new_bodies.append(cut_body if not cut_body.is_empty() else body)
+            except Exception as e:
+                progress(f"  WARNING: boolean cut failed ({e}); keeping original body.")
+                new_bodies.append(body)
+        base_br.bodies = new_bodies
+        progress(f"  Pocket cut applied to base body (role={base_br.role!r}).")
+
+    results.append(comp_br)
+    progress(f"  Appended '{comp_br.name}' ({len(comp_br.bodies)} solid(s)).")
+
+
 def _run_swap_sync(
     job_id: str,
-    component: str,
+    new_component: str,
 ) -> None:
     """
     Blocking swap run executed in a thread pool.
 
-    Mutates *job_id* in-place: re-runs the geometry pipeline from the job's
-    stored SVG files, builds the requested parametric component, applies any
-    boolean cuts to the base body, then re-exports GLB + STL to the same
-    job directory so the existing model URL continues to point at the updated file.
+    Implements *cumulative* in-place assembly mutation:
+      1. Snapshot the job's SVG files and applied-components list.
+      2. Re-run the base geometry pipeline from SVGs to obtain a clean base.
+      3. Re-apply every previously applied component EXCEPT those with the
+         same role as *new_component* (i.e., replace same-role instances,
+         preserve all others).
+      4. Apply the new component on top.
+      5. Overwrite the job's GLB/STL files and update in-memory state.
+
+    This allows sequential swaps (e.g., add NFC then add Logo) to accumulate,
+    while re-swapping the same component role replaces only that role.
     """
     job = jobs[job_id]
 
-    # Snapshot SVG data before transitioning to running (job may be overwritten)
+    # Snapshot before mutating status
     svg_files = job["_svg_files"]
     scale = job.get("_scale", 1.0)
     mode = job.get("_mode", "SVG")
+    # _applied_components: ordered list of component role names previously applied
+    prior_components: list[str] = [
+        c for c in job.get("_applied_components", [])
+        if c != new_component          # drop same-role entry (will be replaced)
+    ]
 
     job["status"] = "running"
-
     log_msgs: list[str] = list(job.get("logs", []))
 
     def progress(msg: str) -> None:
@@ -172,9 +221,10 @@ def _run_swap_sync(
     try:
         from engine.pipeline import run_pipeline
         from engine.exporter import export_glb, export_stl, get_scene_stats
-        from engine.components import build_nfc, build_hook, build_loop, build_logo
 
-        progress(f"Swap: re-running base pipeline for component='{component}' ...")
+        progress(
+            f"Swap: rebuilding from SVGs (prior={prior_components!r} + new='{new_component}') ..."
+        )
         results, msgs = run_pipeline(svg_files, scale=scale, progress_cb=progress)
         log_msgs.extend(msgs)
 
@@ -183,39 +233,16 @@ def _run_swap_sync(
             job["error"] = "Base pipeline produced no geometry for swap."
             return
 
-        progress(f"Building '{component}' component ...")
+        # Re-apply all previously applied components (except same role)
+        for comp in prior_components:
+            _apply_component(results, comp, progress)
 
-        builders = {
-            "nfc": build_nfc,
-            "hook": build_hook,
-            "loop": build_loop,
-            "logo": build_logo,
-        }
-        comp_br, cut_tool = builders[component](results)
+        # Apply the new/replacement component
+        _apply_component(results, new_component, progress)
 
-        if cut_tool is not None and not cut_tool.is_empty():
-            from engine.components import _find_base_body
-            base_br, _ = _find_base_body(results)
-            if base_br is None:
-                base_br = results[0]
-            new_bodies = []
-            for body in base_br.bodies:
-                try:
-                    cut_body = body - cut_tool
-                    new_bodies.append(cut_body if not cut_body.is_empty() else body)
-                except Exception as e:
-                    progress(f"  WARNING: boolean cut failed ({e}); keeping original body.")
-                    new_bodies.append(body)
-            base_br.bodies = new_bodies
-            progress(f"  Applied pocket cut to base body (role={base_br.role!r}).")
-
-        results.append(comp_br)
-        progress(f"  Appended '{comp_br.name}' to scene ({len(comp_br.bodies)} solid(s)).")
-
-        # Overwrite the existing job's files in-place (same job_id, same URLs)
+        # Overwrite existing job files in-place (same URLs remain valid)
         job_dir = os.path.join(JOBS_DIR, job_id)
         os.makedirs(job_dir, exist_ok=True)
-
         glb_path = os.path.join(job_dir, "model.glb")
         stl_path = os.path.join(job_dir, "model.stl")
 
@@ -229,6 +256,9 @@ def _run_swap_sync(
 
         stats = get_scene_stats(results)
 
+        # Update persisted component list (order matters for cumulative rebuilds)
+        updated_components = prior_components + [new_component]
+
         job["status"] = "done"
         job["glb_path"] = glb_path
         job["stl_path"] = stl_path
@@ -237,15 +267,18 @@ def _run_swap_sync(
         job["_svg_files"] = svg_files
         job["_scale"] = scale
         job["_mode"] = mode
+        job["_applied_components"] = updated_components
 
-        progress(f"Swap complete — '{component}' added.")
+        progress(
+            f"Swap complete — assembly now has {updated_components!r}."
+        )
 
     except Exception as e:
         import traceback
         job["status"] = "error"
         job["error"] = str(e)
         job["traceback"] = traceback.format_exc()
-        logging.exception("Swap failed for job %s (component=%s)", job_id, component)
+        logging.exception("Swap failed for job %s (component=%s)", job_id, new_component)
 
 
 @app.post("/api/swap/{job_id}/{component}")
