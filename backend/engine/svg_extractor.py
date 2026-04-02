@@ -100,10 +100,7 @@ def extract_profiles(
     raw_polys: List[Polygon] = []
     for path in paths:
         if not path.isclosed():
-            for segment in path:
-                pass
-            if not path.isclosed():
-                continue
+            continue
         poly = _path_to_polygon(path, scale=scale, n_samples=n_samples)
         if poly is not None:
             if poly.geom_type == 'MultiPolygon':

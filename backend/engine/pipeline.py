@@ -152,20 +152,21 @@ def _trimesh_to_manifold(mesh: trimesh.Trimesh) -> Optional[m3d.Manifold]:
         return None
 
 
-def _bevel_polygon_top(
+def _bevel_edge_ring(
     poly: Polygon,
-    z_top: float,
+    z_position: float,
     bevel_mm: float = 0.2,
-    bevel_steps: int = 2,
+    at_top: bool = True,
 ) -> Optional[m3d.Manifold]:
     """
-    Create a bevel ring solid for the top edge of a prism.
+    Create a bevel-ring wedge solid to subtract from the top or bottom edge of a prism.
 
-    The bevel is built by constructing a thin wedge solid whose cross-section
-    is the area between the original profile and an inward-offset profile,
-    extruded over the bevel height.
+    The ring cross-section is the area between the original profile perimeter and an
+    inward-offset profile, extruded over bevel_mm. Subtracting this from the body
+    produces a 45-degree chamfer approximation.
 
-    Returns a manifold3d Manifold representing the wedge to subtract, or None.
+    at_top=True  → wedge sits at (z_position - bevel_mm) to z_position  (chamfer top edge)
+    at_top=False → wedge sits at z_position to (z_position + bevel_mm)  (chamfer bottom edge)
     """
     try:
         inner = poly.buffer(-bevel_mm)
@@ -174,14 +175,20 @@ def _bevel_polygon_top(
         ring = poly.difference(inner)
         if ring.is_empty:
             return None
-        cs = _shapely_to_cross_section(ring if ring.geom_type == 'Polygon' else list(ring.geoms)[0])
+        ring_poly = ring if ring.geom_type == 'Polygon' else next(iter(ring.geoms), None)
+        if ring_poly is None:
+            return None
+        cs = _shapely_to_cross_section(ring_poly)
         if cs is None:
             return None
         wedge = m3d.Manifold.extrude(cs, bevel_mm)
-        wedge = wedge.translate([0.0, 0.0, z_top - bevel_mm])
+        if at_top:
+            wedge = wedge.translate([0.0, 0.0, z_position - bevel_mm])
+        else:
+            wedge = wedge.translate([0.0, 0.0, z_position])
         return wedge
     except Exception as e:
-        log.debug("bevel_polygon_top failed: %s", e)
+        log.debug("_bevel_edge_ring failed: %s", e)
         return None
 
 
@@ -455,13 +462,21 @@ def run_pipeline(
             current = body
 
             if base_poly is not None:
-                bevel = _bevel_polygon_top(base_poly, base_top_z, bevel_mm=0.2)
-                if bevel is not None:
+                top_bevel = _bevel_edge_ring(base_poly, base_top_z, bevel_mm=0.2, at_top=True)
+                if top_bevel is not None:
                     try:
-                        current = current - bevel
-                        emit("  Applied 0.2mm chamfer bevel to base top edge.")
+                        current = current - top_bevel
+                        emit("  Applied 0.2mm chamfer to base top edge.")
                     except Exception as e:
-                        emit(f"  WARNING: Chamfer bevel failed: {e}")
+                        emit(f"  WARNING: Top chamfer failed: {e}")
+
+                bottom_bevel = _bevel_edge_ring(base_poly, 0.0, bevel_mm=0.2, at_top=False)
+                if bottom_bevel is not None:
+                    try:
+                        current = current - bottom_bevel
+                        emit("  Applied 0.2mm fillet approximation to base bottom edge.")
+                    except Exception as e:
+                        emit(f"  WARNING: Bottom fillet failed: {e}")
 
             trim_z = BASE_HEIGHTS[0] - BASE_TRIM_LIP
             bottom_part, top_part = _split_at_z(current, trim_z)

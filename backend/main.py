@@ -150,6 +150,7 @@ def job_status(job_id: str):
     if job["status"] == "done":
         resp["stats"] = job.get("stats")
         resp["result_urls"] = {
+            "gltf": f"/api/result/{job_id}/model.gltf",
             "glb": f"/api/result/{job_id}/model.glb",
             "stl": f"/api/result/{job_id}/model.stl",
         }
@@ -157,6 +158,25 @@ def job_status(job_id: str):
         resp["error"] = job.get("error")
 
     return resp
+
+
+@app.get("/api/result/{job_id}/model.gltf")
+def result_gltf(job_id: str):
+    """Download the GLB result (binary GLTF) under the .gltf alias."""
+    job = jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if job["status"] != "done":
+        raise HTTPException(status_code=409, detail=f"Job not complete (status={job['status']}).")
+    path = job.get("glb_path")
+    if not path or not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Model file not found.")
+    return FileResponse(
+        path,
+        media_type="model/gltf-binary",
+        filename="model.glb",
+        headers={"Content-Disposition": "attachment; filename=model.glb"},
+    )
 
 
 @app.get("/api/result/{job_id}/model.glb")
