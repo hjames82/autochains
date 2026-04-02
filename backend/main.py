@@ -94,7 +94,12 @@ async def generate(
     mode: str = Form("SVG"),
 ):
     """
-    Accept multipart SVG upload and start a background geometry job.
+    Accept multipart/form-data SVG upload and start a background geometry job.
+
+    Fields:
+    - files  : one or more .svg files (multipart upload)
+    - scale  : uniform coordinate scale applied to SVG coordinates (default 1.0)
+    - mode   : currently 'SVG' (DXF mode reserved for future use)
 
     Returns { job_id, status }
     """
@@ -162,7 +167,12 @@ def job_status(job_id: str):
 
 @app.get("/api/result/{job_id}/model.gltf")
 def result_gltf(job_id: str):
-    """Download the GLB result (binary GLTF) under the .gltf alias."""
+    """
+    Download the model as binary GLTF (GLB format) under the canonical .gltf alias.
+
+    Note: the payload is binary GLB (magic bytes 'glTF') not ASCII JSON GLTF.
+    Three.js GLTFLoader accepts both; use this endpoint with THREE.GLTFLoader.
+    """
     job = jobs.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found.")
@@ -217,9 +227,14 @@ def result_stl(job_id: str):
     )
 
 
-@app.get("/api/jobs")
+_DEBUG = os.environ.get("AUTOCHAINS_DEBUG", "").lower() in ("1", "true", "yes")
+
+
+@app.get("/api/jobs", include_in_schema=_DEBUG)
 def list_jobs():
-    """List all job IDs and their statuses (debugging endpoint)."""
+    """List all job IDs and statuses — only active when AUTOCHAINS_DEBUG=1."""
+    if not _DEBUG:
+        raise HTTPException(status_code=404, detail="Not found.")
     return {
         jid: {"status": j["status"]}
         for jid, j in jobs.items()
