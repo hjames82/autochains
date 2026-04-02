@@ -1,0 +1,369 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+
+/* ── Layer Header ────────────────────────────────────────────────────────────── */
+.layerHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #2e2e2e;
+  flex-shrink: 0;
+}
+.layerSwatch {
+  width: 14px; height: 14px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.layerTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8e8e8;
+}
+.layerSub {
+  font-size: 10px;
+  color: #666;
+  margin-top: 1px;
+}
+
+/* ── Section Title ───────────────────────────────────────────────────────────── */
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #555;
+  padding: 10px 14px 6px;
+}
+
+/* ── Feature List ────────────────────────────────────────────────────────────── */
+.emptyFeatures {
+  font-size: 11px;
+  color: #444;
+  padding: 8px 14px 4px;
+  font-style: italic;
+}
+
+.featureList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.featureRow {
+  background: #1e1e1e;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.featureDisabled { opacity: 0.45; }
+
+.featureHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px;
+}
+.featCheck {
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: #c4f500;
+}
+.featIcon {
+  font-size: 12px;
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  opacity: 0.8;
+}
+.featTitle {
+  flex: 1;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ccc;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0;
+}
+.featTitle:hover { color: #e8e8e8; }
+
+.featActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.moveBtn, .deleteBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 3px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: background 0.1s, color 0.1s;
+}
+.moveBtn { color: #555; }
+.moveBtn:hover:not(:disabled) { background: #333; color: #aaa; }
+.moveBtn:disabled { opacity: 0.2; cursor: default; }
+.deleteBtn { color: #555; }
+.deleteBtn:hover { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+
+.featureParams {
+  padding: 6px 10px 10px;
+  border-top: 1px solid #252525;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Add Feature Palette ─────────────────────────────────────────────────────── */
+.addPalette {
+  padding: 8px;
+  position: relative;
+}
+.addPaletteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(196, 245, 0, 0.07);
+  border: 1.5px dashed rgba(196, 245, 0, 0.3);
+  border-radius: 6px;
+  color: #a0bb00;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.addPaletteBtn:hover {
+  background: rgba(196, 245, 0, 0.12);
+  border-color: rgba(196, 245, 0, 0.5);
+  color: #c4f500;
+}
+
+.palette {
+  position: absolute;
+  left: 8px; right: 8px;
+  top: calc(100% - 4px);
+  z-index: 50;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  overflow: hidden;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.paletteItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+  border-bottom: 1px solid #252525;
+}
+.paletteItem:last-child { border-bottom: none; }
+.paletteItem:hover { background: rgba(196, 245, 0, 0.07); }
+.paletteIcon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+.paletteName {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ccc;
+}
+.paletteDesc {
+  display: block;
+  font-size: 10px;
+  color: #555;
+  margin-top: 1px;
+}
+
+/* ── Number Field ────────────────────────────────────────────────────────────── */
+.numField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fieldLabel {
+  font-size: 10px;
+  color: #777;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+.unit {
+  color: #444;
+  margin-left: 4px;
+}
+.numRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.slider {
+  flex: 1;
+  height: 3px;
+  appearance: none;
+  background: #333;
+  border-radius: 2px;
+  cursor: pointer;
+  accent-color: #c4f500;
+  min-width: 0;
+}
+.numInput {
+  width: 54px;
+  flex-shrink: 0;
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 11px;
+  padding: 3px 6px;
+  text-align: right;
+  outline: none;
+}
+.numInput:focus { border-color: rgba(196, 245, 0, 0.4); }
+
+.selectField {
+  width: 100%;
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 11px;
+  padding: 5px 8px;
+  outline: none;
+  cursor: pointer;
+}
+.selectField:focus { border-color: rgba(196, 245, 0, 0.4); }
+
+/* ── Holes ───────────────────────────────────────────────────────────────────── */
+.holeItem {
+  background: #161616;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  padding: 6px 8px;
+  margin-bottom: 5px;
+}
+.holeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.holeLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.removeHoleBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #444;
+  font-size: 10px;
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+.removeHoleBtn:hover { background: rgba(248,113,113,0.15); color: #f87171; }
+.holeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.holeField label { display: block; }
+.holeFieldLabel {
+  font-size: 9px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+.addHoleBtn {
+  width: 100%;
+  background: none;
+  border: 1px dashed #2e2e2e;
+  border-radius: 4px;
+  color: #555;
+  font-size: 11px;
+  padding: 5px;
+  cursor: pointer;
+  transition: all 0.12s;
+  margin-top: 2px;
+}
+.addHoleBtn:hover { border-color: #444; color: #888; }
+
+/* ── XYZ Fields ──────────────────────────────────────────────────────────────── */
+.xyzRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+.xyzField label { display: block; }
+.xyzLabel {
+  font-size: 9px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 3px;
+}
+
+/* ── Material Editor ─────────────────────────────────────────────────────────── */
+.materialEditor {
+  border-top: 1px solid #2a2a2a;
+  margin-top: 12px;
+  padding-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 8px;
+  padding-right: 8px;
+  padding-bottom: 8px;
+}
+.matRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.colorPicker {
+  width: 48px;
+  height: 24px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  padding: 1px;
+}

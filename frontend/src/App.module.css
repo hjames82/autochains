@@ -9,12 +9,58 @@
 .header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 20px;
+  gap: 12px;
+  padding: 0 16px;
   height: 48px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+
+.headerLeft {
+  flex-shrink: 0;
+}
+
+.headerRight {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.modeNav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 16px;
+}
+
+.modeBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  transition: all 0.14s;
+}
+.modeBtn:hover {
+  color: var(--fg);
+  background: rgba(255,255,255,0.05);
+}
+.modeBtnActive {
+  background: rgba(196, 245, 0, 0.1);
+  border-color: rgba(196, 245, 0, 0.25);
+  color: var(--accent);
+}
+
+.workspaceFull {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
 .logo {

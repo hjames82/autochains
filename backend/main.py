@@ -431,6 +431,128 @@ def list_jobs():
     }
 
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  CAD Workspace: SVG Analysis + Feature-Based 3D Build
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.post("/api/analyze-svg")
+async def analyze_svg_endpoint(file: UploadFile = File(...)):
+    """
+    Intelligently analyze an SVG file and return detected layers.
+
+    Detects layers by (in priority order):
+      1. Inkscape named layers
+      2. Adobe Illustrator layers
+      3. Top-level named groups
+      4. Fill-colour groups
+      5. Fallback (entire SVG as one layer)
+
+    Returns:
+      { layers, svg_size, source_type, viewbox }
+    """
+    from engine.svg_analyzer import analyze_svg
+    svg_bytes = await file.read()
+    try:
+        result = analyze_svg(svg_bytes)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return result
+
+
+def _run_cad_build_sync(job_id: str, payload: dict) -> None:
+    """Thread-pool worker: build a 3D model from CAD layer definitions."""
+    job = jobs[job_id]
+    job["status"] = "running"
+    log_msgs: list[str] = []
+
+    def progress(msg: str) -> None:
+        log_msgs.append(msg)
+        job["logs"] = list(log_msgs)
+
+    try:
+        from engine.cad_tools import build_cad_model
+        from engine.exporter import export_glb, export_stl, get_scene_stats
+
+        layers_def = payload.get("layers", [])
+        svg_size   = payload.get("svg_size", {"w": 100, "h": 100})
+        combine_ops = payload.get("combine_ops", [])
+
+        progress(f"CAD Build started — {len(layers_def)} layer(s)")
+        results = build_cad_model(layers_def, svg_size, combine_ops, progress)
+
+        if not results:
+            job["status"] = "error"
+            job["error"] = "No geometry produced — add at least one Extrude feature to a layer."
+            return
+
+        job_dir = os.path.join(JOBS_DIR, job_id)
+        os.makedirs(job_dir, exist_ok=True)
+        glb_path = os.path.join(job_dir, "model.glb")
+        stl_path = os.path.join(job_dir, "model.stl")
+
+        glb_data = export_glb(results)
+        with open(glb_path, "wb") as f:
+            f.write(glb_data)
+
+        stl_data = export_stl(results)
+        with open(stl_path, "wb") as f:
+            f.write(stl_data)
+
+        stats = get_scene_stats(results)
+        job["status"] = "done"
+        job["glb_path"] = glb_path
+        job["stl_path"] = stl_path
+        job["stats"] = stats
+        progress("CAD Build complete.")
+
+    except Exception as e:
+        import traceback
+        job["status"] = "error"
+        job["error"] = str(e)
+        job["traceback"] = traceback.format_exc()
+        logging.exception("CAD build failed for job %s", job_id)
+
+
+@app.post("/api/cad-build")
+async def cad_build(request: dict):
+    """
+    Build a 3D model from a feature-based CAD layer spec.
+
+    Body (JSON):
+      {
+        "layers": [
+          {
+            "id": "...", "name": "...", "color": "#RRGGBB",
+            "paths": ["M 0 0 L ..."],
+            "visible": true,
+            "features": [
+              {"id": "f1", "type": "extrude", "params": {"height": 5.0}, "enabled": true},
+              ...
+            ],
+            "material": {"color": "#RRGGBB", "metalness": 0.3, "roughness": 0.5}
+          }
+        ],
+        "svg_size": {"w": 100, "h": 100},
+        "combine_ops": []
+      }
+
+    Returns { job_id, status }. Poll /api/job/{job_id} for updates.
+    """
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "status": "pending",
+        "logs": [],
+        "glb_path": None,
+        "stl_path": None,
+        "stats": None,
+        "error": None,
+    }
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(executor, _run_cad_build_sync, job_id, request)
+    return {"job_id": job_id, "status": "pending"}
+
+
 FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 
 if os.path.isdir(FRONTEND_DIST):

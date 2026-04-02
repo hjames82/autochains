@@ -1,3 +1,4 @@
+// ── Classic pipeline types ───────────────────────────────────────────────────
 export interface LayerParams {
   lvl: string
   sem: string
@@ -28,4 +29,88 @@ export interface AppState {
   modelUrl: string | null
   stlUrl: string | null
   stats: Record<string, unknown> | null
+}
+
+// ── CAD Workspace types ──────────────────────────────────────────────────────
+
+export interface SvgLayerDef {
+  id: string
+  name: string
+  color: string
+  paths: string[]
+  bounds: { x: number; y: number; w: number; h: number }
+  area: number
+  path_count: number
+  svg_preview: string
+}
+
+export type CadFeatureType =
+  | 'extrude'
+  | 'press_pull'
+  | 'revolve'
+  | 'fillet'
+  | 'shell'
+  | 'holes'
+  | 'combine'
+  | 'split'
+  | 'translate'
+  | 'rotate'
+
+export interface HoleDef {
+  x: number
+  y: number
+  r: number
+  depth: number
+}
+
+export interface CadFeatureParams {
+  // extrude
+  height?: number
+  taper_angle?: number
+  // press_pull
+  delta?: number
+  // revolve
+  degrees?: number
+  axis?: 'X' | 'Y' | 'Z'
+  segments?: number
+  // fillet
+  radius?: number
+  mode?: 'outer' | 'inner' | 'both'
+  // shell
+  thickness?: number
+  // holes
+  holes?: HoleDef[]
+  // combine
+  target_layer_id?: string
+  operation?: 'union' | 'subtract' | 'intersect'
+  // split
+  plane_z?: number
+  keep?: 'bottom' | 'top'
+  // translate
+  x?: number
+  y?: number
+  z?: number
+}
+
+export interface CadFeature {
+  id: string
+  type: CadFeatureType
+  params: CadFeatureParams
+  enabled: boolean
+}
+
+export interface CadMaterial {
+  color: string
+  metalness: number
+  roughness: number
+}
+
+export interface CadLayerState {
+  layerId: string
+  name: string
+  color: string
+  paths: string[]
+  visible: boolean
+  features: CadFeature[]
+  material: CadMaterial
 }

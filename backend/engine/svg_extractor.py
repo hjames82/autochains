@@ -163,3 +163,22 @@ def center_profiles(profiles: List[Polygon]) -> List[Polygon]:
         )
         for p in profiles
     ]
+
+
+def extract_polygons_from_svg(svg_bytes: bytes, scale: float = 1.0) -> List[Polygon]:
+    """
+    Extract Shapely Polygons from SVG bytes (in-memory, no file needed).
+    Wrapper around extract_profiles that writes to a temp file internally.
+    """
+    import tempfile
+    import os
+    with tempfile.NamedTemporaryFile(suffix=".svg", delete=False) as f:
+        f.write(svg_bytes)
+        tmp_path = f.name
+    try:
+        return extract_profiles(tmp_path, scale=scale)
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass

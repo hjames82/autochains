@@ -2,7 +2,11 @@
 
 ## Project Overview
 
-AutoChains Web is a browser-based replacement for the desktop AutoChains V85 pipeline. It converts 2D vector artwork (SVGs with `lvl=` layer naming) into 3D pendant models using a web-first stack — no Adobe Illustrator or Autodesk Fusion 360 required.
+AutoChains Web is a full-stack browser application with two modes:
+
+1. **Classic Pipeline** — upload SVG files with `lvl=h2__sem=Body__rol=core__col=White__hex=FFFFFF` naming convention → 3D layered pendant (GLTF/STL), with component swap actions (NFC, Hook, Loop, Logo).
+
+2. **CAD Workspace** — upload any SVG → intelligent layer detection (Inkscape/Illustrator/color-group/fallback) → Fusion 360-style feature-based 3D design tools (Extrude, Press Pull, Revolve, Fillet, Shell, Holes, Combine, Split, Move, Rotate) → per-layer PBR rendering.
 
 ## Architecture
 
@@ -25,25 +29,32 @@ frontend/           React + Vite + TypeScript app
     utils/
       parseLayer.ts   Filename parser, buildFilename, ROLE_COLORS, LEVELS, ROLES
     components/
-      LayerPanel.tsx     Left sidebar — drag-and-drop SVG upload, layer cards, inline param editor
+      LayerPanel.tsx     Classic: Left sidebar — drag-and-drop SVG upload, layer cards, inline param editor
       LayerPanel.module.css
-      ViewerPanel.tsx    Center — Three.js viewer (OrbitControls, GLTFLoader, grid, lighting)
+      ViewerPanel.tsx    Shared: Center — Three.js viewer (OrbitControls, GLTFLoader, grid, lighting)
       ViewerPanel.module.css
-      ControlPanel.tsx   Right panel — scale slider, generate + polling, swap buttons, export
+      ControlPanel.tsx   Classic: Right panel — scale slider, generate + polling, swap buttons, export
       ControlPanel.module.css
+      CadWorkspace.tsx   CAD: Full-width 3-panel workspace (layer list, viewer, tool panel)
+      CadWorkspace.module.css
+      ToolPanel.tsx      CAD: Feature tree editor (10 operation types, material editor)
+      ToolPanel.module.css
     index.css       Global CSS variables and resets
   vite.config.ts    Host 0.0.0.0:5000, proxy /api → localhost:8000, allowedHosts:true
   package.json
 
 backend/            FastAPI Python API
-  main.py           App entry point, CORS, health, generate/job/result endpoints
-  requirements.txt  fastapi, uvicorn, svgpathtools, shapely, trimesh, manifold3d
+  main.py           App entry point, CORS, health, generate/job/result/analyze-svg/cad-build endpoints
+  requirements.txt  fastapi, uvicorn, svgpathtools, shapely, trimesh, manifold3d, lxml
   engine/
     __init__.py
-    parser.py       ComponentDef class + Z-height system (get_height_mm, get_z_start_and_end)
-    svg_extractor.py  SVG → Shapely polygon extraction (handles holes, Y-flip)
-    pipeline.py     5-phase geometry pipeline (extrude, tool buffers, boolean ops, post-process)
-    exporter.py     GLB (binary GLTF) + STL export from manifold3d Manifold objects
+    parser.py         ComponentDef class + Z-height system (get_height_mm, get_z_start_and_end)
+    svg_extractor.py  SVG → Shapely polygon extraction (holes, Y-flip, bytes wrapper)
+    pipeline.py       5-phase geometry pipeline (extrude, tool buffers, boolean ops, post-process)
+    exporter.py       GLB (binary GLTF) + STL export from manifold3d Manifold objects
+    svg_analyzer.py   CAD: SVG layer detection (Inkscape/Illustrator/color-group/fallback)
+    cad_tools.py      CAD: Feature-based 3D ops (extrude, fillet, shell, revolve, holes, combine, split…)
+    components.py     Classic: NFC/Hook/Loop/Logo swap geometry builders
 
 PoppChainsAuto/     Original component library assets
   *.f3d             Autodesk Fusion component files
@@ -79,7 +90,9 @@ AutoChains_V85.py   Original Fusion script (reference for geometry engine logic)
 | #1 Project Foundation & Scaffold | Done |
 | #2 3D Geometry Engine (Backend) | Done |
 | #3 Frontend Application UI | Done |
-| #4 Component Swap Actions & Library | Pending |
+| #4 Component Swap Actions & Library | Done |
+| CAD Workspace (SVG Analyzer + CAD Tools backend) | Done |
+| CAD Workspace (Frontend: CadWorkspace + ToolPanel) | Done |
 
 ## Layer Naming Convention
 

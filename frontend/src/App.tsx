@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import LayerPanel from './components/LayerPanel'
 import ViewerPanel from './components/ViewerPanel'
 import ControlPanel from './components/ControlPanel'
+import CadWorkspace from './components/CadWorkspace'
 import styles from './App.module.css'
 import { AppState, LayerFile, JobStatus } from './types'
 import { makeLayerFile } from './utils/parseLayer'
@@ -9,6 +10,9 @@ import { makeLayerFile } from './utils/parseLayer'
 const POLL_INTERVAL = 1200
 
 export default function App() {
+  const [appMode, setAppMode] = useState<'classic' | 'cad'>('classic')
+
+  // ── Classic pipeline state ─────────────────────────────────────────────────
   const [layers, setLayers] = useState<LayerFile[]>([])
   const [scale, setScale] = useState(1.0)
   const [mode, setMode] = useState<'SVG' | 'DXF'>('SVG')
@@ -72,10 +76,8 @@ export default function App() {
           clearInterval(pollRef.current!)
           setJobStatus('done')
           setStats(data.stats ?? null)
-          const gltfUrl = `/api/result/${id}/model.gltf`
-          const stl = `/api/result/${id}/model.stl`
-          setModelUrl(gltfUrl)
-          setStlUrl(stl)
+          setModelUrl(`/api/result/${id}/model.gltf`)
+          setStlUrl(`/api/result/${id}/model.stl`)
         } else if (data.status === 'error') {
           clearInterval(pollRef.current!)
           setJobStatus('error')
@@ -154,43 +156,75 @@ export default function App() {
   return (
     <div className={styles.layout}>
       <header className={styles.header}>
-        <div className={styles.logo}>
-          <span className={styles.logoIcon}>⛓️</span>
-          <span className={styles.logoName}>AutoChains</span>
-          <span className={styles.logoBadge}>Web</span>
+        <div className={styles.headerLeft}>
+          <div className={styles.logo}>
+            <span className={styles.logoIcon}>⛓️</span>
+            <span className={styles.logoName}>AutoChains</span>
+            <span className={styles.logoBadge}>Web</span>
+          </div>
         </div>
-        <p className={styles.tagline}>2.5D Pendant Generator — Browser Edition</p>
-        {layers.length > 0 && (
-          <button className={styles.clearBtn} onClick={clearAll} title="Clear all layers and reset">
-            Clear / Start Over
+
+        <nav className={styles.modeNav}>
+          <button
+            className={`${styles.modeBtn} ${appMode === 'classic' ? styles.modeBtnActive : ''}`}
+            onClick={() => setAppMode('classic')}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            Classic Pipeline
           </button>
-        )}
+          <button
+            className={`${styles.modeBtn} ${appMode === 'cad' ? styles.modeBtnActive : ''}`}
+            onClick={() => setAppMode('cad')}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+              <line x1="12" y1="22" x2="12" y2="15.5"/>
+              <polyline points="22 8.5 12 15.5 2 8.5"/>
+            </svg>
+            CAD Workspace
+          </button>
+        </nav>
+
+        <div className={styles.headerRight}>
+          {appMode === 'classic' && layers.length > 0 && (
+            <button className={styles.clearBtn} onClick={clearAll} title="Clear all layers and reset">
+              Clear / Reset
+            </button>
+          )}
+        </div>
       </header>
 
-      <div className={styles.workspace}>
-        <aside className={styles.sidebar}>
-          <LayerPanel
-            layers={layers}
-            onAddFiles={addFiles}
-            onRemoveLayer={removeLayer}
-            onUpdateLayer={updateLayer}
-          />
-        </aside>
-
-        <main className={styles.viewer}>
-          <ViewerPanel state={state} />
-        </main>
-
-        <aside className={styles.controls}>
-          <ControlPanel
-            state={state}
-            scale={scale}
-            onScaleChange={setScale}
-            onModeChange={setMode}
-            onGenerate={generate}
-            onSwap={swap}
-          />
-        </aside>
+      <div className={`${styles.workspace} ${appMode === 'cad' ? styles.workspaceFull : ''}`}>
+        {appMode === 'classic' ? (
+          <>
+            <aside className={styles.sidebar}>
+              <LayerPanel
+                layers={layers}
+                onAddFiles={addFiles}
+                onRemoveLayer={removeLayer}
+                onUpdateLayer={updateLayer}
+              />
+            </aside>
+            <main className={styles.viewer}>
+              <ViewerPanel state={state} />
+            </main>
+            <aside className={styles.controls}>
+              <ControlPanel
+                state={state}
+                scale={scale}
+                onScaleChange={setScale}
+                onModeChange={setMode}
+                onGenerate={generate}
+                onSwap={swap}
+              />
+            </aside>
+          </>
+        ) : (
+          <CadWorkspace />
+        )}
       </div>
     </div>
   )
