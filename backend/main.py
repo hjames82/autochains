@@ -4,7 +4,7 @@ import asyncio
 import logging
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, Optional
+from typing import Dict, Optional, Literal
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -73,6 +73,7 @@ def _run_pipeline_sync(job_id: str, svg_files: dict, scale: float, mode: str) ->
         job["glb_path"] = glb_path
         job["stl_path"] = stl_path
         job["stats"] = stats
+        job["_results"] = results
 
     except Exception as e:
         import traceback
@@ -120,6 +121,9 @@ async def generate(
         "stl_path": None,
         "stats": None,
         "error": None,
+        "_svg_files": svg_files,
+        "_scale": scale,
+        "_mode": mode,
     }
 
     loop = asyncio.get_event_loop()
@@ -133,6 +137,159 @@ async def generate(
     )
 
     return {"job_id": job_id, "status": "pending"}
+
+
+SWAP_COMPONENTS = {"nfc", "hook", "loop", "logo"}
+
+
+def _run_swap_sync(
+    new_job_id: str,
+    parent_job_id: str,
+    component: str,
+) -> None:
+    """
+    Blocking swap run executed in a thread pool.
+
+    Re-runs the geometry pipeline from the parent job's stored SVG files,
+    builds the requested parametric component, applies any boolean cuts to
+    the base body, then re-exports GLB + STL.
+    """
+    job = jobs[new_job_id]
+    job["status"] = "running"
+
+    log_msgs: list[str] = []
+
+    def progress(msg: str) -> None:
+        log_msgs.append(msg)
+        job["logs"] = list(log_msgs)
+
+    try:
+        from engine.pipeline import run_pipeline
+        from engine.exporter import export_glb, export_stl, get_scene_stats
+        from engine.components import build_nfc, build_hook, build_loop, build_logo
+
+        parent = jobs[parent_job_id]
+        svg_files = parent["_svg_files"]
+        scale = parent.get("_scale", 1.0)
+        mode = parent.get("_mode", "SVG")
+
+        progress(f"Swap: re-running base pipeline for component='{component}' ...")
+        results, msgs = run_pipeline(svg_files, scale=scale, progress_cb=progress)
+        log_msgs.extend(msgs)
+
+        if not results:
+            job["status"] = "error"
+            job["error"] = "Base pipeline produced no geometry for swap."
+            return
+
+        progress(f"Building '{component}' component ...")
+
+        builders = {
+            "nfc": build_nfc,
+            "hook": build_hook,
+            "loop": build_loop,
+            "logo": build_logo,
+        }
+        comp_br, cut_tool = builders[component](results)
+
+        if cut_tool is not None and not cut_tool.is_empty():
+            base_br = results[0]
+            new_bodies = []
+            for body in base_br.bodies:
+                try:
+                    cut_body = body - cut_tool
+                    new_bodies.append(cut_body if not cut_body.is_empty() else body)
+                except Exception as e:
+                    progress(f"  WARNING: boolean cut failed ({e}); keeping original body.")
+                    new_bodies.append(body)
+            base_br.bodies = new_bodies
+            progress(f"  Applied pocket cut to base body.")
+
+        results.append(comp_br)
+        progress(f"  Appended '{comp_br.name}' to scene ({len(comp_br.bodies)} solid(s)).")
+
+        job_dir = os.path.join(JOBS_DIR, new_job_id)
+        os.makedirs(job_dir, exist_ok=True)
+
+        glb_path = os.path.join(job_dir, "model.glb")
+        stl_path = os.path.join(job_dir, "model.stl")
+
+        glb_data = export_glb(results)
+        with open(glb_path, "wb") as f:
+            f.write(glb_data)
+
+        stl_data = export_stl(results)
+        with open(stl_path, "wb") as f:
+            f.write(stl_data)
+
+        stats = get_scene_stats(results)
+
+        job["status"] = "done"
+        job["glb_path"] = glb_path
+        job["stl_path"] = stl_path
+        job["stats"] = stats
+        job["_results"] = results
+        job["_svg_files"] = svg_files
+        job["_scale"] = scale
+        job["_mode"] = mode
+
+        progress(f"Swap complete — '{component}' added.")
+
+    except Exception as e:
+        import traceback
+        job["status"] = "error"
+        job["error"] = str(e)
+        job["traceback"] = traceback.format_exc()
+        logging.exception("Swap failed for job %s (component=%s)", new_job_id, component)
+
+
+@app.post("/api/swap/{job_id}/{component}")
+async def swap(job_id: str, component: str):
+    """
+    Add a parametric component to an existing completed job.
+
+    Path parameters:
+    - job_id   : the completed generation job to base the model on
+    - component: one of 'nfc', 'hook', 'loop', 'logo'
+
+    Returns a new { job_id, status } that can be polled via /api/job/{job_id}.
+    The resulting model includes the base pendant geometry plus the component.
+    """
+    component = component.lower()
+    if component not in SWAP_COMPONENTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown component '{component}'. Must be one of: {sorted(SWAP_COMPONENTS)}.",
+        )
+
+    parent = jobs.get(job_id)
+    if parent is None:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
+    if parent["status"] != "done":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job '{job_id}' is not complete (status={parent['status']}).",
+        )
+    if not parent.get("_svg_files"):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job '{job_id}' has no stored SVG data for swap.",
+        )
+
+    new_job_id = str(uuid.uuid4())
+    jobs[new_job_id] = {
+        "status": "pending",
+        "logs": [],
+        "glb_path": None,
+        "stl_path": None,
+        "stats": None,
+        "error": None,
+    }
+
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(executor, _run_swap_sync, new_job_id, job_id, component)
+
+    return {"job_id": new_job_id, "status": "pending", "component": component}
 
 
 @app.get("/api/job/{job_id}")
