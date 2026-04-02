@@ -18,12 +18,19 @@ The frontend proxies all `/api/*` requests to the backend via Vite's dev proxy.
 ```
 frontend/           React + Vite + TypeScript app
   src/
-    App.tsx         Root layout (3-panel shell)
+    App.tsx         Root layout + full shared state (layers, jobId, scale, modelUrl…)
     App.module.css
+    types.ts        Shared TypeScript types (LayerFile, AppState, JobStatus)
+    declarations.d.ts  CSS module type declarations
+    utils/
+      parseLayer.ts   Filename parser, buildFilename, ROLE_COLORS, LEVELS, ROLES
     components/
-      LayerPanel.tsx     Left sidebar — SVG file list + layer cards
-      ViewerPanel.tsx    Center — 3D model viewer (Three.js, Task #3)
-      ControlPanel.tsx   Right panel — settings, generate, swap, export
+      LayerPanel.tsx     Left sidebar — drag-and-drop SVG upload, layer cards, inline param editor
+      LayerPanel.module.css
+      ViewerPanel.tsx    Center — Three.js viewer (OrbitControls, GLTFLoader, grid, lighting)
+      ViewerPanel.module.css
+      ControlPanel.tsx   Right panel — scale slider, generate + polling, swap buttons, export
+      ControlPanel.module.css
     index.css       Global CSS variables and resets
   vite.config.ts    Host 0.0.0.0:5000, proxy /api → localhost:8000, allowedHosts:true
   package.json
@@ -71,7 +78,7 @@ AutoChains_V85.py   Original Fusion script (reference for geometry engine logic)
 |------|--------|
 | #1 Project Foundation & Scaffold | Done |
 | #2 3D Geometry Engine (Backend) | Done |
-| #3 Frontend Application UI | Pending |
+| #3 Frontend Application UI | Done |
 | #4 Component Swap Actions & Library | Pending |
 
 ## Layer Naming Convention

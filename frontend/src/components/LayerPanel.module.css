@@ -9,16 +9,19 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px 10px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 8px;
 }
 
 .panelTitle {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.8px;
+  flex: 1;
 }
 
 .uploadBtn {
@@ -28,9 +31,10 @@
   background: var(--purple);
   color: #fff;
   border-radius: 5px;
-  padding: 5px 10px;
-  font-size: 12px;
+  padding: 5px 9px;
+  font-size: 11px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .uploadBtn:hover {
@@ -38,36 +42,39 @@
 }
 
 .dropZone {
-  margin: 12px 12px 4px;
+  margin: 10px 10px 4px;
   border: 1.5px dashed var(--border);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 14px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   color: var(--text-muted);
   text-align: center;
   transition: border-color 0.15s, background 0.15s;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
-.dropZone:hover {
+.dropZone:hover,
+.dropZoneActive {
   border-color: var(--accent);
   background: rgba(196, 245, 0, 0.04);
 }
 
 .dropZone p {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
 }
 
 .dropZone span {
-  font-size: 11px;
+  font-size: 10px;
+  opacity: 0.7;
 }
 
 .dropZone code {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--accent);
   font-family: "SFMono-Regular", Consolas, monospace;
 }
@@ -75,10 +82,18 @@
 .layerList {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 12px;
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
+}
+
+.emptyMsg {
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.6;
+  text-align: center;
+  padding: 20px 0;
 }
 
 .listLabel {
@@ -86,28 +101,36 @@
   font-weight: 700;
   color: var(--text-muted);
   letter-spacing: 0.8px;
-  padding: 4px 0;
+  padding: 2px 0;
 }
 
 .layerCard {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 8px 10px;
   transition: border-color 0.15s;
-  cursor: pointer;
+  overflow: hidden;
 }
 
 .layerCard:hover {
-  border-color: #444;
+  border-color: #3a3a3a;
+}
+
+.layerCardExpanded {
+  border-color: var(--accent);
+}
+
+.cardRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 10px;
+  cursor: pointer;
 }
 
 .colorSwatch {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 3px;
   flex-shrink: 0;
   border: 1px solid rgba(255,255,255,0.1);
@@ -119,7 +142,7 @@
 }
 
 .layerName {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   display: block;
   overflow: hidden;
@@ -130,8 +153,9 @@
 .layerMeta {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 3px;
+  gap: 4px;
+  margin-top: 2px;
+  flex-wrap: wrap;
 }
 
 .levelBadge {
@@ -141,23 +165,149 @@
   background: rgba(196, 245, 0, 0.1);
   border: 1px solid rgba(196, 245, 0, 0.2);
   border-radius: 3px;
-  padding: 1px 5px;
+  padding: 1px 4px;
   font-family: "SFMono-Regular", Consolas, monospace;
 }
 
 .roleBadge {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   color: #fff;
   border-radius: 3px;
-  padding: 1px 5px;
+  padding: 1px 4px;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
 
-.namingHelper {
-  padding: 10px 12px 12px;
+.parentBadge {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
+.cardActions {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.editBtn,
+.removeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+}
+
+.editBtn:hover {
+  background: rgba(196, 245, 0, 0.1);
+  color: var(--accent);
+  border-color: rgba(196, 245, 0, 0.2);
+}
+
+.removeBtn:hover {
+  background: rgba(255, 68, 68, 0.1);
+  color: var(--danger);
+  border-color: rgba(255, 68, 68, 0.2);
+}
+
+.editor {
   border-top: 1px solid var(--border);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(0,0,0,0.2);
+}
+
+.editorGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.paramField {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.paramLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+}
+
+.paramInput,
+.paramSelect {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.paramInput:focus,
+.paramSelect:focus {
+  border-color: var(--accent);
+}
+
+.hexRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.hexPicker {
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: none;
+}
+
+.filenamePreview {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.filenameLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.filenameCode {
+  font-size: 9px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  color: var(--accent);
+  background: rgba(196, 245, 0, 0.06);
+  border: 1px solid rgba(196, 245, 0, 0.15);
+  border-radius: 3px;
+  padding: 4px 6px;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.namingHelper {
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .helperLabel {
@@ -165,18 +315,18 @@
   font-weight: 700;
   color: var(--text-muted);
   letter-spacing: 0.8px;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 .syntaxExample {
   display: block;
-  font-size: 10px;
+  font-size: 9px;
   font-family: "SFMono-Regular", Consolas, monospace;
   color: var(--text-muted);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 6px 8px;
+  padding: 5px 7px;
   word-break: break-all;
   line-height: 1.5;
 }
