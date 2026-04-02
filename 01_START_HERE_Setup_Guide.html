@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="brand" data-color-mode="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoChains V85 Setup & Reference</title>
+    <style>
+        /* --- BASE VARIABLES --- */
+        :root {
+            --transition-speed: 0.3s;
+            --btn-bg: var(--accent);
+            --btn-hover: var(--accent-hover);
+            --btn-text: var(--bg-color);
+            --title-font: inherit;
+            --title-color: var(--text-main);
+            --selection-bg: var(--accent);
+            --selection-color: #ffffff;
+            --warning-selection-bg: var(--text-main);
+            --warning-selection-color: var(--bg-color);
+        }
+
+        /* --- GLOBAL TEXT SELECTION OVERRIDES --- */
+        ::selection {
+            background: var(--selection-bg);
+            color: var(--selection-color);
+        }
+        ::-moz-selection {
+            background: var(--selection-bg);
+            color: var(--selection-color);
+        }
+        
+        /* Specific override for the Warning/Critical Section */
+        .alert-warning ::selection, .alert-warning *::selection {
+            background: var(--warning-selection-bg);
+            color: var(--warning-selection-color);
+        }
+        .alert-warning ::-moz-selection, .alert-warning *::-moz-selection {
+            background: var(--warning-selection-bg);
+            color: var(--warning-selection-color);
+        }
+
+        /* ========================================================= */
+        /* --- THEME 1: BRAND CUSTOM (Your Custom UI Specs) --- */
+        /* ========================================================= */
+        [data-theme="brand"][data-color-mode="dark"] {
+            --bg-color: #131313; --surface: #1a1a1a; --text-main: #ffffff; --text-muted: #a0a0a0;
+            --accent: #C4F500; --accent-hover: #d2fb33; --border: #333333; --code-bg: #000000;
+            
+            /* Purple for Buttons & Warnings */
+            --btn-bg: #7f00ff; --btn-hover: #6600cc; --btn-text: #ffffff;
+            --warning-bg: #7f00ff; --warning-border: #C4F500; --warning-text: #ffffff;
+            --success: #C4F500; 
+            
+            /* Green for Titles, Purple for Step Accents */
+            --title-color: #C4F500;
+            --step-border: #7f00ff;
+            
+            /* Framer Font Stack */
+            --title-font: var(--framer-font-family-preview, var(--framer-blockquote-font-family, var(--framer-font-family, sans-serif)));
+            
+            /* Selection: Purple normally, Green in the warning box */
+            --selection-bg: #7f00ff; --selection-color: #ffffff;
+            --warning-selection-bg: #C4F500; --warning-selection-color: #131313;
+            
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --radius: 6px; --shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        [data-theme="brand"][data-color-mode="light"] {
+            --bg-color: #f4f4f4; --surface: #ffffff; --text-main: #131313; --text-muted: #555555;
+            --accent: #7f00ff; --accent-hover: #6600cc; --border: #dddddd; --code-bg: #eeeeee;
+            
+            /* Purple for Buttons & Warnings */
+            --btn-bg: #7f00ff; --btn-hover: #6600cc; --btn-text: #ffffff;
+            --warning-bg: #7f00ff; --warning-border: #C4F500; --warning-text: #ffffff;
+            --success: #7f00ff; 
+            
+            /* Titles are Purple for readability, Step borders are Purple */
+            --title-color: #7f00ff;
+            --step-border: #7f00ff;
+            
+            /* Framer Font Stack */
+            --title-font: var(--framer-font-family-preview, var(--framer-blockquote-font-family, var(--framer-font-family, sans-serif)));
+            
+            /* Selection: Purple normally, Green in the warning box */
+            --selection-bg: #7f00ff; --selection-color: #ffffff;
+            --warning-selection-bg: #C4F500; --warning-selection-color: #131313;
+            
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --radius: 6px; --shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        /* --- THEME 2: MODERN SaaS --- */
+        [data-theme="modern"][data-color-mode="light"] {
+            --bg-color: #f8f9fc; --surface: #ffffff; --text-main: #2d3748; --text-muted: #718096;
+            --accent: #3182ce; --accent-hover: #2b6cb0; --border: #e2e8f0; --code-bg: #edf2f7;
+            --btn-bg: #3182ce; --btn-hover: #2b6cb0; --btn-text: #ffffff;
+            --success: #38a169; --warning-bg: #fffaf0; --warning-border: #feebc8; --warning-text: #c05621;
+            --title-font: inherit; --title-color: var(--text-main);
+            --selection-bg: #3182ce; --selection-color: #ffffff; --warning-selection-bg: #c05621; --warning-selection-color: #fffaf0;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --radius: 8px; --shadow: 0 4px 6px rgba(0,0,0,0.05);
+            --step-border: var(--accent);
+        }
+        [data-theme="modern"][data-color-mode="dark"] {
+            --bg-color: #1a202c; --surface: #2d3748; --text-main: #e2e8f0; --text-muted: #a0aec0;
+            --accent: #63b3ed; --accent-hover: #90cdf4; --border: #4a5568; --code-bg: #171923;
+            --btn-bg: #63b3ed; --btn-hover: #90cdf4; --btn-text: #1a202c;
+            --success: #68d391; --warning-bg: #7b341e; --warning-border: #9c4221; --warning-text: #feebc8;
+            --title-font: inherit; --title-color: var(--text-main);
+            --selection-bg: #63b3ed; --selection-color: #1a202c; --warning-selection-bg: #feebc8; --warning-selection-color: #7b341e;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --radius: 8px; --shadow: 0 4px 6px rgba(0,0,0,0.2);
+            --step-border: var(--accent);
+        }
+
+        /* --- THEME 3: ELEGANT BLUSH --- */
+        [data-theme="blush"][data-color-mode="light"] {
+            --bg-color: #faf5f5; --surface: #ffffff; --text-main: #4a4040; --text-muted: #8a7b7b;
+            --accent: #d49a89; --accent-hover: #b87b6a; --border: #ebdcd8; --code-bg: #fffbf9;
+            --btn-bg: #d49a89; --btn-hover: #b87b6a; --btn-text: #ffffff;
+            --success: #8ba888; --warning-bg: #fff0f0; --warning-border: #ffd6d6; --warning-text: #a35252;
+            --title-font: inherit; --title-color: var(--text-main);
+            --selection-bg: #d49a89; --selection-color: #ffffff; --warning-selection-bg: #a35252; --warning-selection-color: #fff0f0;
+            --font-family: "Avenir", "Century Gothic", "Segoe UI", sans-serif;
+            --radius: 16px; --shadow: 0 8px 24px rgba(212, 154, 137, 0.08);
+            --step-border: var(--accent);
+        }
+        [data-theme="blush"][data-color-mode="dark"] {
+            --bg-color: #2b2626; --surface: #363030; --text-main: #f0eaea; --text-muted: #baaead;
+            --accent: #e8b4a5; --accent-hover: #fcd5ca; --border: #4f4646; --code-bg: #211d1d;
+            --btn-bg: #e8b4a5; --btn-hover: #fcd5ca; --btn-text: #2b2626;
+            --success: #a3c4a0; --warning-bg: #4a2c2c; --warning-border: #6e3e3e; --warning-text: #ffbaba;
+            --title-font: inherit; --title-color: var(--text-main);
+            --selection-bg: #e8b4a5; --selection-color: #2b2626; --warning-selection-bg: #ffbaba; --warning-selection-color: #4a2c2c;
+            --font-family: "Avenir", "Century Gothic", "Segoe UI", sans-serif;
+            --radius: 16px; --shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            --step-border: var(--accent);
+        }
+
+        /* --- GLOBAL STYLES --- */
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-main);
+            line-height: 1.6; margin: 0; padding: 0; transition: all var(--transition-speed);
+        }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+
+        /* Control Panel */
+        .controls {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--surface); padding: 15px 20px; border: 1px solid var(--border);
+            border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 40px;
+        }
+        
+        .controls select, .controls button {
+            background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border);
+            padding: 8px 12px; font-family: inherit; font-weight: bold; cursor: pointer;
+            border-radius: calc(var(--radius) / 2); transition: background var(--transition-speed);
+        }
+
+        h1, h2, h3 { color: var(--title-color); font-family: var(--title-font); font-weight: 600; }
+        h1 { margin: 0 0 5px 0; font-size: 2.2em; letter-spacing: -0.5px; }
+        h2 { border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-top: 50px; }
+
+        /* Workflow Diagram */
+        .workflow {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--surface); padding: 30px; border-radius: var(--radius);
+            border: 1px solid var(--border); box-shadow: var(--shadow); margin-bottom: 40px; text-align: center;
+        }
+
+        .node { flex: 1; padding: 15px; }
+        .node-icon { font-size: 2.2em; margin-bottom: 10px; display: flex; justify-content: center; align-items: center; min-height: 50px; }
+        .node-title { font-weight: bold; font-size: 1.1em; color: var(--title-color); font-family: var(--title-font); }
+        .node-desc { font-size: 0.85em; color: var(--text-muted); margin-top: 5px; }
+        .arrow { font-size: 1.8em; color: var(--accent); padding: 0 15px; }
+
+        /* Alerts & Callouts */
+        .alert-warning {
+            background-color: var(--warning-bg); border: 2px solid var(--warning-border);
+            color: var(--warning-text); padding: 25px; border-radius: var(--radius); 
+            margin: 30px 0; box-shadow: var(--shadow);
+        }
+        .alert-warning h3 { margin-top: 0; color: var(--warning-text); font-family: var(--title-font); }
+
+        /* Code Blocks & Buttons */
+        .code-block {
+            background: var(--code-bg); border-radius: var(--radius); padding: 15px;
+            position: relative; margin: 15px 0; border: 1px solid var(--border);
+        }
+        code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 0.95em; word-wrap: break-word; color: var(--text-main); }
+        
+        .copy-btn {
+            position: absolute; top: 12px; right: 12px; background: var(--btn-bg);
+            color: var(--btn-text); border: none; padding: 6px 12px; 
+            border-radius: calc(var(--radius) / 2); cursor: pointer; font-weight: bold; font-family: inherit;
+        }
+        .copy-btn:hover { background: var(--btn-hover); color: var(--bg-color);}
+        .copy-btn.copied { background: var(--success); color: var(--bg-color); }
+
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; background: var(--surface); box-shadow: var(--shadow); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+        th, td { padding: 15px; border-bottom: 1px solid var(--border); text-align: left; }
+        th { background-color: var(--bg-color); font-weight: 600; color: var(--title-color); font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--title-font); }
+        tr:last-child td { border-bottom: none; }
+
+        .step {
+            background: var(--surface); border: 1px solid var(--border);
+            border-left: 6px solid var(--step-border); padding: 25px; margin-bottom: 25px;
+            border-radius: var(--radius); box-shadow: var(--shadow);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="controls">
+        <div>
+            <strong>Design Theme:</strong>
+            <select id="themeSelect" onchange="changeTheme()">
+                <option value="brand">Brand Custom</option>
+                <option value="modern">Modern SaaS</option>
+                <option value="blush">Elegant Blush</option>
+            </select>
+        </div>
+        <button id="modeToggle" onclick="toggleColorMode()">🌓 Toggle Dark / Light</button>
+    </div>
+
+    <header>
+        <h1>✨ AutoChains V85</h1>
+        <p style="color: var(--text-muted); font-size: 1.1em; margin: 0;">Installation & Vector Pipeline Guide</p>
+    </header>
+
+    <div class="workflow">
+        <div class="node">
+            <div class="node-icon">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/f/fb/Adobe_Illustrator_CC_icon.svg" 
+                     alt="Illustrator" 
+                     style="width: 45px; height: 45px; object-fit: contain;" 
+                     onerror="this.onerror=null; this.outerHTML='🎨';">
+            </div>
+            <div class="node-title">Illustrator</div>
+            <div class="node-desc">ExportAllLayersToSVGs.js</div>
+        </div>
+        <div class="arrow">➔</div>
+        <div class="node">
+            <div class="node-icon">📁</div>
+            <div class="node-title">Local Drive</div>
+            <div class="node-desc">SVGs in TEMP Folder</div>
+        </div>
+        <div class="arrow">➔</div>
+        <div class="node">
+            <div class="node-icon">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/d/db/Fusion360_Logo.svg" 
+                     alt="Autodesk Fusion" 
+                     style="width: 45px; height: 45px; object-fit: contain;" 
+                     onerror="this.onerror=null; this.outerHTML='🛠️';">
+            </div>
+            <div class="node-title">Autodesk Fusion</div>
+            <div class="node-desc">AutoChains_V85.py</div>
+        </div>
+    </div>
+
+    <h2>1. Installation & Environment Setup</h2>
+    
+    <div class="step">
+        <h3>Step 1: Component Library (D: Drive)</h3>
+        <p>Drag the <strong>PoppChainsAuto</strong> folder from this ZIP directly onto the root of your D: drive. If you change this path, update the <code>COMPONENT_LIB_PATH</code> variable in the Python script.</p>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyText('lib-path', this)">Copy</button>
+            <code id="lib-path">D:\PoppChainsAuto</code>
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Illustrator Script</h3>
+        <p>Copy the script <strong>ExportAllLayersToSVGs.js</strong> from this ZIP into your Adobe Illustrator presets folder.</p>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyText('ill-path', this)">Copy</button>
+            <code id="ill-path">C:\Program Files\Adobe\Adobe Illustrator 2026\Presets\en_US\Scripts</code>
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Autodesk Fusion Script</h3>
+        <p>In Autodesk Fusion, create a new Python script. Open it in your code editor and paste the entire contents of <strong>AutoChains_V85.py</strong> into the blank template.</p>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyText('fus-path', this)">Copy</button>
+            <code id="fus-path">C:\Users\YourSystemUserName\AppData\Roaming\Autodesk\Autodesk Fusion\API\Scripts</code>
+        </div>
+    </div>
+
+    <h2>2. 2.5D Layer Decomposition (Vector Guidelines)</h2>
+    <p>To prepare files for this workflow, you must perform a <strong>Multi-depth Vector Segmentation</strong> (or 2.5D Layer Decomposition). You are converting a flat 2D graphic into independent, stacked profiles. The goal is: <em>One clean, closed vector per height layer exported as an SVG.</em></p>
+
+    <div class="alert-warning">
+        <h3>⚠️ Critical Vector Health Rules</h3>
+        <p>Autodesk Fusion performs heavy mathematical offsets to create the interlocking features. It will fail if your vectors are messy or left hollow.</p>
+        <ul style="margin-bottom: 0;">
+            <li><strong>Patch Underlying Holes:</strong> When you move upper-level details to their own layer, you MUST patch the hole they leave behind in the lower layer. Release compound paths and delete inner cutouts so the underlying shape is completely solid. The engine will automatically carve out the exact pocket needed.</li>
+            <li><strong>Closed Paths Only:</strong> Every single shape MUST be a perfectly closed path. No open lines.</li>
+            <li><strong>Avoid Node Clustering:</strong> Select your artwork and use <code>Object &gt; Path &gt; Simplify</code> to remove excess anchor points.</li>
+            <li><strong>No Sharp Corners:</strong> Round off micro-sharp corners. Autodesk Fusion cannot calculate offsets for overlapping tight vertices.</li>
+            <li><strong>1:1 Scale:</strong> Draw exactly at scale (line-on-line). Do not manually offset paths to fake tolerances.</li>
+            <li><strong>Expand Everything:</strong> Outline all text (<code>Type &gt; Create Outlines</code>) and expand all strokes/appearances.</li>
+        </ul>
+    </div>
+
+    <h2>3. Layer Naming Syntax</h2>
+    <p>Every layer meant for export must begin with <code>lvl=</code>. We use double underscores (<code>__</code>) to separate parameters.</p>
+    <div class="code-block">
+        <button class="copy-btn" onclick="copyText('syntax', this)">Copy</button>
+        <code id="syntax">lvl=h4__sem=CapTop__rol=insert__par=Base__col=Black__hex=000000</code>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Parameter</th>
+                <th>Meaning</th>
+                <th>Example</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>lvl</strong></td>
+                <td>Z-Height Layer (Must be first)</td>
+                <td><code>lvl=h2</code>, <code>lvl=h3+</code></td>
+            </tr>
+            <tr>
+                <td><strong>sem</strong></td>
+                <td>Semantic Part Name</td>
+                <td><code>sem=MainBody</code></td>
+            </tr>
+            <tr>
+                <td><strong>rol</strong></td>
+                <td>Physical Role / Behavior</td>
+                <td><code>rol=insert</code></td>
+            </tr>
+            <tr>
+                <td><strong>par</strong></td>
+                <td>Parent Component (Optional)</td>
+                <td><code>par=MainBody</code></td>
+            </tr>
+            <tr>
+                <td><strong>col</strong></td>
+                <td>Autodesk Fusion Material Name</td>
+                <td><code>col=MatteWhite</code></td>
+            </tr>
+            <tr>
+                <td><strong>hex</strong></td>
+                <td>Appearance Color Code</td>
+                <td><code>hex=FFFFFF</code></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>4. Role Dictionary</h2>
+    <p>The <code>rol</code> parameter dictates exactly how the Autodesk Fusion engine processes boolean cuts and starting heights.</p>
+    <ul>
+        <li><strong><code>base</code></strong>: The foundation. Extrudes from 0mm up to its assigned level.</li>
+        <li><strong><code>core</code></strong>: Stacks perfectly flush on top of its parent. No boolean cuts.</li>
+        <li><strong><code>insert</code></strong>: Sinks into the parent, generating a stepped cutting tool with tight snap-fit tolerances.</li>
+        <li><strong><code>detail</code></strong>: Mechanically identical to insert, but uses a micro-offset (0.05mm) to prevent failure on tiny text.</li>
+        <li><strong><code>cover</code></strong>: Slides over the base. Ignored parent height, floating at 2.0mm and carving upward with loose slide-fit tolerances.</li>
+        <li><strong><code>pillar</code></strong>: Anchors directly to 0mm and punches upward through any intermediate layers to prevent floating geometry.</li>
+        <li><strong><code>drop</code></strong>: Anchors to the parent's top surface, but punches downward through anything beneath it.</li>
+    </ul>
+
+</div>
+
+<script>
+    const htmlTag = document.documentElement;
+
+    // Change CSS Theme
+    function changeTheme() {
+        const selectedTheme = document.getElementById("themeSelect").value;
+        htmlTag.setAttribute("data-theme", selectedTheme);
+    }
+
+    // Toggle Light / Dark Mode
+    function toggleColorMode() {
+        const currentMode = htmlTag.getAttribute("data-color-mode");
+        const newMode = currentMode === "light" ? "dark" : "light";
+        htmlTag.setAttribute("data-color-mode", newMode);
+    }
+
+    // Copy to Clipboard Logic
+    function copyText(elementId, btnElement) {
+        const text = document.getElementById(elementId).innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            btnElement.innerText = 'Copied!';
+            btnElement.classList.add('copied');
+            setTimeout(() => {
+                btnElement.innerText = 'Copy';
+                btnElement.classList.remove('copied');
+            }, 2000);
+        });
+    }
+</script>
+
+</body>
+</html>

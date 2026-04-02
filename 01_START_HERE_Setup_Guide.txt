@@ -1,0 +1,60 @@
+======================================================
+AUTOCHAINS V85 - INSTALLATION & REFERENCE GUIDE
+======================================================
+
+WORKFLOW OVERVIEW
+Illustrator (ExportAllLayersToSVGs.js) -> SVGs stored in Local Drive -> Autodesk Fusion (AutoChains_V85.py)
+
+------------------------------------------------------
+PART 1: INSTALLATION & SETUP
+------------------------------------------------------
+
+1. COMPONENT LIBRARY (D: Drive)
+Drag the entire "PoppChainsAuto" folder from this ZIP directly onto the root of your D: drive.
+Target Path: D:\PoppChainsAuto
+
+2. ILLUSTRATOR SCRIPT SETUP
+Take the script "ExportAllLayersToSVGs.js" from this ZIP and copy it into your Illustrator Scripts folder:
+Path: C:\Program Files\Adobe\Adobe Illustrator 2026\Presets\en_US\Scripts
+(Note: The year may change depending on your installed version).
+
+Configuration: By default, this script exports to: D:\POPP CHAINS\Automation_SVGs\TEMP TEST FILES. To change this, edit the "outputFolderPath" variable inside the .js file.
+
+3. AUTODESK FUSION SCRIPT SETUP
+Open Autodesk Fusion, navigate to Utilities > Add-Ins > Scripts and Add-Ins. 
+Click "Create" (Python), open the new blank script in your editor, and paste the entire contents of "AutoChains_V85.py" from this ZIP into it. Save and close.
+
+------------------------------------------------------
+PART 2: 2.5D LAYER DECOMPOSITION (VECTOR GUIDELINES)
+------------------------------------------------------
+To prep files for this engine, you must perform a "2.5D Vector Layer Decomposition." You are converting a flat 2D graphic into independent, stacked profiles. 
+
+
+
+VECTOR HEALTH RULES (CRITICAL FOR FUSION):
+1. ⚠️ Patch Underlying Holes: When you move upper-level details to their own layer, you MUST patch the hole they leave behind in the lower layer. Release compound paths and delete inner cutouts so the underlying shape is completely solid. The Fusion engine will automatically carve out the exact pocket needed.
+
+
+2. Closed Paths Only: Every single shape MUST be a perfectly closed path. No open lines.
+3. Avoid Node Clustering: Autodesk Fusion will choke on messy vectors. Select your artwork and use Object > Path > Simplify in Illustrator to remove excess nodes.
+
+
+4. No Sharp Corners: Round off micro-sharp corners. The tool-offset engine mathematically fails on infinitely sharp vector points.
+5. 1:1 Scale: Draw exactly at scale. Do not manually offset paths for tolerances.
+6. Expand Everything: Outline all text and expand all strokes/appearances.
+7. Artboard Crop: Keep artwork on a single artboard.
+
+------------------------------------------------------
+PART 3: NAMING SYNTAX & ROLES
+------------------------------------------------------
+Every layer meant for export must start with "lvl=". 
+Format: lvl=[Height]__sem=[PartName]__rol=[Role]__par=[ParentName]
+
+ROLES (The "rol=" parameter):
+- base: The foundation layer (0mm up).
+- core: Stacks flush on top of its parent.
+- insert: Sinks into the parent, creating a tight stepped pocket.
+- detail: Micro-inlay (0.05mm offset) for tiny text/logos.
+- cover: Slides over the parent, carving upward.
+- pillar: Anchors to 0mm and punches up through intermediate layers.
+- drop: Anchors to parent top, punches down through everything below it.
