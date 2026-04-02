@@ -1,33 +1,96 @@
-# AutoChains V85
+# AutoChains Web
 
 ## Project Overview
 
-AutoChains is an automation workflow that converts 2D vector graphics from Adobe Illustrator into 3D models within Autodesk Fusion. It specializes in "2.5D Layer Decomposition" for creating PoppChains (custom charms/keychains).
+AutoChains Web is a browser-based replacement for the desktop AutoChains V85 pipeline. It converts 2D vector artwork (SVGs with `lvl=` layer naming) into 3D pendant models using a web-first stack — no Adobe Illustrator or Autodesk Fusion 360 required.
 
 ## Architecture
 
-This is a desktop automation scripting project — not a traditional web application. The files are scripts meant to be installed into Adobe Illustrator and Autodesk Fusion on a Windows machine.
+Two-process full-stack application:
 
-### Key Files
+- **Frontend**: React + Vite + TypeScript, port 5000 (Replit webview)
+- **Backend**: FastAPI + Python, port 8000 (internal)
 
-- **`AutoChains_V85.py`** / **`AutoChains_v85_1.py`** — Core Python script for Autodesk Fusion (uses `adsk` API)
-- **`ExportAllLayersToSVGs.js`** — ExtendScript for Adobe Illustrator to export layers as SVGs
-- **`01_START_HERE_Setup_Guide.html`** — Comprehensive setup guide (served as the web preview)
-- **`PoppChainsAuto/`** — Library of 3D component files (.f3d) and vector markers (.dxf)
-- **`serve.py`** — Simple Python HTTP server that serves the setup guide on port 5000
+The frontend proxies all `/api/*` requests to the backend via Vite's dev proxy.
 
-## Workflow
+### Project Structure
 
-The Replit web preview serves the `01_START_HERE_Setup_Guide.html` file via `serve.py` running on port 5000. This lets users read the full installation and usage documentation in-browser.
+```
+frontend/           React + Vite + TypeScript app
+  src/
+    App.tsx         Root layout (3-panel shell)
+    App.module.css
+    components/
+      LayerPanel.tsx     Left sidebar — SVG file list + layer cards
+      ViewerPanel.tsx    Center — 3D model viewer (Three.js, Task #3)
+      ControlPanel.tsx   Right panel — settings, generate, swap, export
+    index.css       Global CSS variables and resets
+  vite.config.ts    Host 0.0.0.0:5000, proxy /api → localhost:8000, allowedHosts:true
+  package.json
 
-### Desktop Workflow (actual automation)
+backend/            FastAPI Python API
+  main.py           App entry point, CORS, health endpoint
+  requirements.txt  fastapi, uvicorn[standard], python-multipart
 
-1. **Illustrator**: User names layers using the `lvl=` syntax convention
-2. **Export**: `ExportAllLayersToSVGs.js` exports layers as SVGs to `D:\POPP CHAINS\Automation_SVGs`
-3. **Fusion**: `AutoChains_V85.py` reads the SVGs and component library from `D:\PoppChainsAuto` to generate the 3D model
+PoppChainsAuto/     Original component library assets
+  *.f3d             Autodesk Fusion component files
+  *.dxf             DXF marker files for positioning
+
+AutoChains_V85.py   Original Fusion script (reference for geometry engine logic)
+```
+
+### Brand Colors
+- Background: `#131313`
+- Surface: `#1a1a1a`
+- Accent / lime: `#C4F500`
+- Purple: `#7f00ff`
+- Text muted: `#a0a0a0`
+
+## Workflows
+
+| Name | Command | Port | Type |
+|------|---------|------|------|
+| Start application | `cd frontend && npm run dev` | 5000 | webview |
+| Start backend | `cd backend && uvicorn main:app --host localhost --port 8000 --reload` | 8000 | console |
 
 ## Deployment
 
 - **Target**: Autoscale
-- **Run command**: `python serve.py`
-- **Port**: 5000
+- **Run**: `bash -c "cd backend && uvicorn main:app --host 0.0.0.0 --port 5000"`
+- For production, a built React SPA should be served by FastAPI static files or a CDN
+
+## Task Roadmap
+
+| Task | Status |
+|------|--------|
+| #1 Project Foundation & Scaffold | Done |
+| #2 3D Geometry Engine (Backend) | Pending |
+| #3 Frontend Application UI | Pending |
+| #4 Component Swap Actions & Library | Pending |
+
+## Layer Naming Convention
+
+SVG filenames must follow: `lvl=h2__sem=Body__rol=core__par=Base__col=White__hex=FFFFFF.svg`
+
+| Param | Meaning |
+|-------|---------|
+| `lvl` | Z-height level (h0–h7, fractional: h2+, h3-) |
+| `sem` | Semantic part name |
+| `rol` | Role: base, core, insert, detail, cover, pillar, drop |
+| `par` | Parent component name (for boolean ops) |
+| `col` | Material name |
+| `hex` | 6-digit hex color |
+| `inf` | Side-wall inflate amount in mm |
+
+## Height Reference
+
+| Level | Height |
+|-------|--------|
+| h0 | 12.00 mm |
+| h1 | 13.43 mm |
+| h2 | 14.86 mm |
+| h3 | 16.29 mm |
+| h4 | 17.71 mm |
+| h5 | 19.14 mm |
+| h6 | 20.57 mm |
+| h7 | 22.00 mm |
