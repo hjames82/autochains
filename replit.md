@@ -29,8 +29,14 @@ frontend/           React + Vite + TypeScript app
   package.json
 
 backend/            FastAPI Python API
-  main.py           App entry point, CORS, health endpoint
-  requirements.txt  fastapi, uvicorn[standard], python-multipart
+  main.py           App entry point, CORS, health, generate/job/result endpoints
+  requirements.txt  fastapi, uvicorn, svgpathtools, shapely, trimesh, manifold3d
+  engine/
+    __init__.py
+    parser.py       ComponentDef class + Z-height system (get_height_mm, get_z_start_and_end)
+    svg_extractor.py  SVG → Shapely polygon extraction (handles holes, Y-flip)
+    pipeline.py     5-phase geometry pipeline (extrude, tool buffers, boolean ops, post-process)
+    exporter.py     GLB (binary GLTF) + STL export from manifold3d Manifold objects
 
 PoppChainsAuto/     Original component library assets
   *.f3d             Autodesk Fusion component files
@@ -64,7 +70,7 @@ AutoChains_V85.py   Original Fusion script (reference for geometry engine logic)
 | Task | Status |
 |------|--------|
 | #1 Project Foundation & Scaffold | Done |
-| #2 3D Geometry Engine (Backend) | Pending |
+| #2 3D Geometry Engine (Backend) | Done |
 | #3 Frontend Application UI | Pending |
 | #4 Component Swap Actions & Library | Pending |
 
