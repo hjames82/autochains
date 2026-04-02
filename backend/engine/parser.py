@@ -56,9 +56,12 @@ def get_height_mm(level_str: str, parent_level_str: Optional[str] = None) -> flo
                 pidx = max(0, min(7, pidx))
                 step = (base_mm - BASE_HEIGHTS[pidx]) / 4.0
             except ValueError:
-                step = 1.0 / 4.0
+                step = (BASE_HEIGHTS[idx] - BASE_HEIGHTS[max(0, idx - 1)]) / 4.0
         else:
-            step = 1.0 / 4.0
+            if idx > 0:
+                step = (BASE_HEIGHTS[idx] - BASE_HEIGHTS[idx - 1]) / 4.0
+            else:
+                step = BASE_HEIGHTS[0] / 4.0
         return base_mm - step * num_minus
 
     return base_mm

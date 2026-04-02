@@ -276,12 +276,17 @@ def run_pipeline(
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         for filename, content in sorted(svg_files.items()):
-            if not filename.lower().endswith('.svg'):
+            safe_name = os.path.basename(filename)
+            if not safe_name.lower().endswith('.svg'):
                 continue
-            comp = ComponentDef.from_filename(filename)
+            if os.sep in filename or (os.altsep and os.altsep in filename):
+                emit(f"  WARNING: Rejected unsafe filename '{filename}'.")
+                continue
+
+            comp = ComponentDef.from_filename(safe_name)
             emit(f"  Parsed '{comp.name}': role={comp.role} level={comp.level_str} parent={comp.parent_name}")
 
-            tmp_path = os.path.join(tmp_dir, filename)
+            tmp_path = os.path.join(tmp_dir, safe_name)
             with open(tmp_path, 'wb') as f:
                 f.write(content)
 
@@ -447,7 +452,13 @@ def run_pipeline(
 
     emit("\n=== Phase 5: Post-processing ===")
 
-    base_comp = next((c for c in sorted_comps if c.role == 'base'), None)
+    base_comps = [c for c in sorted_comps if c.role == 'base' and c.name in final_bodies]
+
+    def _component_total_volume(comp: ComponentDef) -> float:
+        bodies = final_bodies.get(comp.name, [])
+        return sum(b.volume() for b in bodies if not b.is_empty())
+
+    base_comp = max(base_comps, key=_component_total_volume) if base_comps else None
 
     if base_comp and base_comp.name in final_bodies:
         base_manifolds = final_bodies[base_comp.name]
