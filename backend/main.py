@@ -143,21 +143,27 @@ SWAP_COMPONENTS = {"nfc", "hook", "loop", "logo"}
 
 
 def _run_swap_sync(
-    new_job_id: str,
-    parent_job_id: str,
+    job_id: str,
     component: str,
 ) -> None:
     """
     Blocking swap run executed in a thread pool.
 
-    Re-runs the geometry pipeline from the parent job's stored SVG files,
-    builds the requested parametric component, applies any boolean cuts to
-    the base body, then re-exports GLB + STL.
+    Mutates *job_id* in-place: re-runs the geometry pipeline from the job's
+    stored SVG files, builds the requested parametric component, applies any
+    boolean cuts to the base body, then re-exports GLB + STL to the same
+    job directory so the existing model URL continues to point at the updated file.
     """
-    job = jobs[new_job_id]
+    job = jobs[job_id]
+
+    # Snapshot SVG data before transitioning to running (job may be overwritten)
+    svg_files = job["_svg_files"]
+    scale = job.get("_scale", 1.0)
+    mode = job.get("_mode", "SVG")
+
     job["status"] = "running"
 
-    log_msgs: list[str] = []
+    log_msgs: list[str] = list(job.get("logs", []))
 
     def progress(msg: str) -> None:
         log_msgs.append(msg)
@@ -167,11 +173,6 @@ def _run_swap_sync(
         from engine.pipeline import run_pipeline
         from engine.exporter import export_glb, export_stl, get_scene_stats
         from engine.components import build_nfc, build_hook, build_loop, build_logo
-
-        parent = jobs[parent_job_id]
-        svg_files = parent["_svg_files"]
-        scale = parent.get("_scale", 1.0)
-        mode = parent.get("_mode", "SVG")
 
         progress(f"Swap: re-running base pipeline for component='{component}' ...")
         results, msgs = run_pipeline(svg_files, scale=scale, progress_cb=progress)
@@ -211,7 +212,8 @@ def _run_swap_sync(
         results.append(comp_br)
         progress(f"  Appended '{comp_br.name}' to scene ({len(comp_br.bodies)} solid(s)).")
 
-        job_dir = os.path.join(JOBS_DIR, new_job_id)
+        # Overwrite the existing job's files in-place (same job_id, same URLs)
+        job_dir = os.path.join(JOBS_DIR, job_id)
         os.makedirs(job_dir, exist_ok=True)
 
         glb_path = os.path.join(job_dir, "model.glb")
@@ -243,20 +245,20 @@ def _run_swap_sync(
         job["status"] = "error"
         job["error"] = str(e)
         job["traceback"] = traceback.format_exc()
-        logging.exception("Swap failed for job %s (component=%s)", new_job_id, component)
+        logging.exception("Swap failed for job %s (component=%s)", job_id, component)
 
 
 @app.post("/api/swap/{job_id}/{component}")
 async def swap(job_id: str, component: str):
     """
-    Add a parametric component to an existing completed job.
+    Add a parametric component to an existing completed job, mutating it in-place.
 
     Path parameters:
-    - job_id   : the completed generation job to base the model on
+    - job_id   : the completed generation job to modify
     - component: one of 'nfc', 'hook', 'loop', 'logo'
 
-    Returns a new { job_id, status } that can be polled via /api/job/{job_id}.
-    The resulting model includes the base pendant geometry plus the component.
+    Returns { job_id, status } using the SAME job_id so the existing model URLs
+    continue to point to the updated files.  Poll /api/job/{job_id} for progress.
     """
     component = component.lower()
     if component not in SWAP_COMPONENTS:
@@ -265,34 +267,24 @@ async def swap(job_id: str, component: str):
             detail=f"Unknown component '{component}'. Must be one of: {sorted(SWAP_COMPONENTS)}.",
         )
 
-    parent = jobs.get(job_id)
-    if parent is None:
+    job = jobs.get(job_id)
+    if job is None:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
-    if parent["status"] != "done":
+    if job["status"] != "done":
         raise HTTPException(
             status_code=409,
-            detail=f"Job '{job_id}' is not complete (status={parent['status']}).",
+            detail=f"Job '{job_id}' is not complete (status={job['status']}).",
         )
-    if not parent.get("_svg_files"):
+    if not job.get("_svg_files"):
         raise HTTPException(
             status_code=409,
             detail=f"Job '{job_id}' has no stored SVG data for swap.",
         )
 
-    new_job_id = str(uuid.uuid4())
-    jobs[new_job_id] = {
-        "status": "pending",
-        "logs": [],
-        "glb_path": None,
-        "stl_path": None,
-        "stats": None,
-        "error": None,
-    }
-
     loop = asyncio.get_event_loop()
-    loop.run_in_executor(executor, _run_swap_sync, new_job_id, job_id, component)
+    loop.run_in_executor(executor, _run_swap_sync, job_id, component)
 
-    return {"job_id": new_job_id, "status": "pending", "component": component}
+    return {"job_id": job_id, "status": "pending", "component": component}
 
 
 @app.get("/api/job/{job_id}")

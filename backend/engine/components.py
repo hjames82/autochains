@@ -524,16 +524,11 @@ def build_logo(results: List[BodyResult]) -> Tuple[BodyResult, None]:
     logo_bodies: list[m3d.Manifold] = []
 
     if polys:
-        # Compute marker-space centroid for alignment only (no scale change)
-        logo_xs = [x for pts, _ in polys for x, y in pts]
-        logo_ys = [y for pts, _ in polys for x, y in pts]
-        lcx = float(np.mean(logo_xs))
-        lcy = float(np.mean(logo_ys))
-
         for pts, area in polys:
-            # Translate so marker centre aligns with pendant COM; preserve marker scale
+            # Shift DXF origin to pendant COM; preserve all natural marker-relative offsets
+            # and marker scale.  Do NOT subtract the logo centroid (no centroid recentering).
             translated = [
-                (x - lcx + cx, y - lcy + cy)
+                (x + cx, y + cy)
                 for x, y in pts
             ]
             try:
