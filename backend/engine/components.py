@@ -1,8 +1,13 @@
 """
 Parametric component builders for AutoChains pendant swap actions.
 
+Marker DXF files drive sizing/positioning wherever available:
+  NFC_Marker.dxf  → NFC cap outer radius (CIRCLE entity)
+  Hook_Marker.dxf → bail bounding box → ring major radius + height
+  Logo_Marker.dxf → logo polygon contours (LINE/ARC/SPLINE/LWPOLYLINE)
+
 Each builder accepts a list of existing BodyResult objects (from the main pipeline),
-computes the base bounding box, and returns:
+computes the base bounding box + XY centre-of-mass from vertex geometry, and returns:
   (component_body_result, cut_tool_manifold | None)
 
 The cut_tool (if not None) should be boolean-subtracted from the first/largest
@@ -29,13 +34,15 @@ log = logging.getLogger(__name__)
 # ──────────────────────────────────────────────
 _HERE = os.path.dirname(__file__)
 _DXF_DIR = os.path.join(_HERE, "..", "..", "PoppChainsAuto")
+NFC_DXF = os.path.join(_DXF_DIR, "NFC_Marker.dxf")
+HOOK_DXF = os.path.join(_DXF_DIR, "Hook_Marker.dxf")
 LOGO_DXF = os.path.join(_DXF_DIR, "Logo_Marker.dxf")
 
 # ──────────────────────────────────────────────
 #  Colour constants
 # ──────────────────────────────────────────────
 METAL_HEX = "A8A8A8"
-LIME_HEX = "C4F500"
+WHITE_HEX = "FFFFFF"
 
 # ──────────────────────────────────────────────
 #  Shared geometry helpers
@@ -62,6 +69,30 @@ def _get_bounds(results: List[BodyResult]) -> Tuple[float, float, float, float, 
            float(max(xs)), float(max(ys)), float(max(zs))
 
 
+def _get_xy_centroid(results: List[BodyResult]) -> Tuple[float, float]:
+    """
+    Return the XY centre-of-mass of all base bodies, computed as the
+    average of all mesh vertices.  This gives a more accurate placement
+    centre than the bounding-box mid-point for asymmetric pendants.
+    """
+    all_x, all_y = [], []
+    for br in results:
+        for man in br.bodies:
+            if man.is_empty():
+                continue
+            try:
+                mesh = man.to_mesh()
+                verts = np.array(mesh.vert_properties)
+                all_x.extend(verts[:, 0].tolist())
+                all_y.extend(verts[:, 1].tolist())
+            except Exception:
+                pass
+    if all_x:
+        return float(np.mean(all_x)), float(np.mean(all_y))
+    x0, y0, _, x1, y1, _ = _get_bounds(results)
+    return (x0 + x1) / 2.0, (y0 + y1) / 2.0
+
+
 def _circle_cross_section(center_r: float, wire_r: float, n: int = 24) -> m3d.CrossSection:
     """Return a CrossSection that is a circle of radius wire_r centred at (center_r, 0)."""
     pts = [
@@ -76,7 +107,7 @@ def _annular_cylinder(
     outer_r: float,
     inner_r: float,
     height: float,
-    seg: int = 48,
+    seg: int = 64,
 ) -> m3d.Manifold:
     """Solid annular cylinder from z=0 to z=height."""
     outer = m3d.Manifold.cylinder(height=height, radius_low=outer_r, circular_segments=seg)
@@ -90,13 +121,66 @@ def _torus_xz(major_r: float, wire_r: float, seg_sweep: int = 48, seg_wire: int 
     """
     Return a torus lying in the XZ plane (axis Y).
 
-    The default revolve() in manifold3d revolves around the Z axis (torus in XY plane).
-    We apply rotate([90,0,0]) to put the torus in the XZ plane.
-    The hole of the resulting torus passes in the Y direction.
+    manifold3d revolve() rotates the XY-plane cross-section around the Z axis,
+    producing a torus in the XY plane.  We apply rotate([90,0,0]) to put the
+    torus in the XZ plane.  A chain threading through the pendant in the Y
+    direction then passes cleanly through the ring.
     """
     cs = _circle_cross_section(major_r, wire_r, seg_wire)
     torus_xy = m3d.Manifold.revolve(cs, seg_sweep)   # torus in XY plane
     return torus_xy.rotate([90.0, 0.0, 0.0])          # torus in XZ plane, hole in Y
+
+
+# ──────────────────────────────────────────────
+#  DXF dimension extractors
+# ──────────────────────────────────────────────
+
+def _read_nfc_outer_r() -> float:
+    """
+    Parse NFC_Marker.dxf and return the outer radius of the NFC cap ring.
+    Falls back to 17.5 mm (35 mm OD) if the file is unavailable.
+    """
+    try:
+        import ezdxf
+        if not os.path.isfile(NFC_DXF):
+            return 17.5
+        doc = ezdxf.readfile(NFC_DXF)
+        msp = doc.modelspace()
+        radii = []
+        for e in msp:
+            if e.dxftype() == "CIRCLE":
+                radii.append(e.dxf.radius)
+        if radii:
+            return float(max(radii))
+    except Exception as e:
+        log.debug("NFC DXF read failed: %s", e)
+    return 17.5
+
+
+def _read_hook_bbox() -> Tuple[float, float]:
+    """
+    Parse Hook_Marker.dxf and return (width_mm, height_mm).
+    Falls back to (17.6, 10.4) if the file is unavailable.
+    """
+    try:
+        import ezdxf
+        if not os.path.isfile(HOOK_DXF):
+            return 17.6, 10.4
+        doc = ezdxf.readfile(HOOK_DXF)
+        msp = doc.modelspace()
+        xs, ys = [], []
+        for e in msp:
+            if e.dxftype() == "LINE":
+                xs += [e.dxf.start.x, e.dxf.end.x]
+                ys += [e.dxf.start.y, e.dxf.end.y]
+            elif e.dxftype() == "SPLINE":
+                for pt in e.control_points:
+                    xs.append(pt[0]); ys.append(pt[1])
+        if xs:
+            return float(max(xs) - min(xs)), float(max(ys) - min(ys))
+    except Exception as e:
+        log.debug("Hook DXF read failed: %s", e)
+    return 17.6, 10.4
 
 
 # ──────────────────────────────────────────────
@@ -105,27 +189,29 @@ def _torus_xz(major_r: float, wire_r: float, seg_sweep: int = 48, seg_wire: int 
 
 def build_nfc(results: List[BodyResult]) -> Tuple[BodyResult, Optional[m3d.Manifold]]:
     """
-    Annular NFC cap ring (18 mm OD, 1.5 mm wall, 3 mm tall) recessed into
-    the top face of the base body.
+    Annular NFC cap ring recessed into the top face of the base body.
+
+    Dimensions are read from NFC_Marker.dxf (outer radius from the CIRCLE entity).
+    Wall thickness is 1.5 mm per spec; cap height is 3 mm.
+    XY placement uses the vertex centre-of-mass of the base bodies.
 
     Returns:
       - BodyResult for the metallic NFC ring
       - cut_tool: solid cylinder that carves the pocket in the base top face
     """
-    x0, y0, z0, x1, y1, z1 = _get_bounds(results)
-    cx = (x0 + x1) / 2.0
-    cy = (y0 + y1) / 2.0
-    z_top = z1
-
-    outer_r = 9.0      # 18 mm OD
-    inner_r = 7.5      # 1.5 mm wall
+    outer_r = _read_nfc_outer_r()           # from DXF CIRCLE entity ≈ 17.5 mm
+    inner_r = outer_r - 1.5                 # 1.5 mm wall per spec
     cap_h = 3.0
-    z_cap = z_top - cap_h    # cap sits recessed in top face
+
+    cx, cy = _get_xy_centroid(results)
+    _, _, z0, _, _, z1 = _get_bounds(results)
+    z_top = z1
+    z_cap = z_top - cap_h                   # cap recessed into top face
 
     ring = _annular_cylinder(outer_r, inner_r, cap_h).translate([cx, cy, z_cap])
 
     pocket = m3d.Manifold.cylinder(
-        height=cap_h + 0.5, radius_low=outer_r + 0.15, circular_segments=48
+        height=cap_h + 0.5, radius_low=outer_r + 0.15, circular_segments=64
     ).translate([cx, cy, z_top - cap_h - 0.5])
 
     br = BodyResult(name="NFC Cap", role="nfc", hex_color=METAL_HEX, bodies=[ring])
@@ -140,27 +226,27 @@ def build_hook(results: List[BodyResult]) -> Tuple[BodyResult, Optional[m3d.Mani
     """
     D-ring bail at the top-centre of the pendant (highest Y).
 
-    Geometry:
-      - Rectangular tab (3 × 2 × 5 mm) that inserts into a slot cut into the
-        pendant top edge.
-      - Flat torus ring (major r = 5 mm, wire r = 1.2 mm) sits on top of tab,
-        lying in the XZ plane so a chain can thread through in the Y direction.
+    Geometry sized from Hook_Marker.dxf bounding box:
+      - Bail ring major radius ≈ marker_width / 4 (half the ring outer diameter)
+      - Tab height ≈ marker_height / 2 (depth into pendant)
 
     Returns:
       - BodyResult for the bail
       - cut_tool: box to subtract from the pendant top edge (tab pocket)
     """
+    hook_w, hook_h = _read_hook_bbox()      # from DXF: ≈ 17.63 × 10.4 mm
+
+    cx, cy = _get_xy_centroid(results)
     x0, y0, z0, x1, y1, z1 = _get_bounds(results)
-    cx = (x0 + x1) / 2.0
-    y_top = y1           # highest Y = top of pendant
+    y_top = y1
     z_mid = (z0 + z1) / 2.0
+
+    wire_r = 1.2
+    major_r = hook_w / 4.0                  # ≈ 4.4 mm major radius for a 17.6 mm wide marker
+    tab_h = hook_h / 2.0                    # ≈ 5.2 mm tab depth into pendant
 
     tab_w = 3.0
     tab_d = 2.0
-    tab_h = 4.5          # tab goes down into pendant
-
-    major_r = 5.0
-    wire_r = 1.2
 
     tab = m3d.Manifold.cube([tab_w, tab_h, tab_d]).translate(
         [cx - tab_w / 2.0, y_top - tab_h, z_mid - tab_d / 2.0]
@@ -186,24 +272,26 @@ def build_loop(results: List[BodyResult]) -> Tuple[BodyResult, Optional[m3d.Mani
     """
     Closed circular loop bail at the top-centre of the pendant.
 
-    Larger ring than the hook (major r = 7 mm, wire r = 1.5 mm) with a
-    shorter connecting tab.
+    Built parametrically (no Loop_Marker.dxf exists); sized proportionally
+    to the hook marker (slightly larger ring).
 
     Returns:
       - BodyResult for the loop
       - cut_tool: tab pocket cut
     """
+    hook_w, hook_h = _read_hook_bbox()
+
+    cx, cy = _get_xy_centroid(results)
     x0, y0, z0, x1, y1, z1 = _get_bounds(results)
-    cx = (x0 + x1) / 2.0
     y_top = y1
     z_mid = (z0 + z1) / 2.0
 
+    wire_r = 1.5
+    major_r = hook_w / 3.5                  # slightly larger than hook
+    tab_h = hook_h / 2.0
+
     tab_w = 3.5
     tab_d = 2.5
-    tab_h = 4.0
-
-    major_r = 7.0
-    wire_r = 1.5
 
     tab = m3d.Manifold.cube([tab_w, tab_h, tab_d]).translate(
         [cx - tab_w / 2.0, y_top - tab_h, z_mid - tab_d / 2.0]
@@ -346,22 +434,23 @@ def _parse_logo_polygons():
 
 def build_logo(results: List[BodyResult]) -> Tuple[BodyResult, None]:
     """
-    Extrude the logo profile (from Logo_Marker.dxf) 1.5 mm above the top face
-    of the pendant base.
+    Extrude the logo profile (from Logo_Marker.dxf) 1.5 mm upward from the
+    *bottom face* of the pendant base (z = z_min → z_min + 1.5 mm).
 
-    The logo is centred and scaled to occupy 80% of the base XY footprint while
-    preserving aspect ratio.
+    The logo is centred at the XY centre-of-mass of the base geometry and
+    scaled to occupy 80 % of the base XY footprint while preserving aspect ratio.
+
+    Colour is white (#FFFFFF) per the AutoChains specification.
 
     Returns:
-      - BodyResult for the logo embossment
-      - None (no cut required)
+      - BodyResult for the white logo embossment
+      - None (no base cut required; the logo sits on the bottom face)
     """
+    cx, cy = _get_xy_centroid(results)
     x0, y0, z0, x1, y1, z1 = _get_bounds(results)
     base_w = x1 - x0
     base_h = y1 - y0
-    cx = (x0 + x1) / 2.0
-    cy = (y0 + y1) / 2.0
-    z_top = z1
+    z_bottom = z0                            # bottom face of the pendant
 
     extrude_h = 1.5
     polys = _parse_logo_polygons()
@@ -382,7 +471,7 @@ def build_logo(results: List[BodyResult]) -> Tuple[BodyResult, None]:
         target_h = base_h * 0.80
         sx = target_w / logo_w
         sy = target_h / logo_h
-        scale = min(sx, sy, 1.0)  # never scale up beyond 1:1
+        scale = min(sx, sy, 1.0)            # never scale up beyond 1:1
 
         for pts, area in polys:
             scaled = [
@@ -393,7 +482,9 @@ def build_logo(results: List[BodyResult]) -> Tuple[BodyResult, None]:
                 cs = m3d.CrossSection([scaled])
                 if cs.area() < 0.01:
                     continue
-                body = m3d.Manifold.extrude(cs, extrude_h).translate([0.0, 0.0, z_top])
+                body = m3d.Manifold.extrude(cs, extrude_h).translate(
+                    [0.0, 0.0, z_bottom]
+                )
                 logo_bodies.append(body)
             except Exception as e:
                 log.debug("logo extrude failed: %s", e)
@@ -403,7 +494,7 @@ def build_logo(results: List[BodyResult]) -> Tuple[BodyResult, None]:
         plate_w = min(base_w * 0.6, 20.0)
         plate_h = min(base_h * 0.2, 5.0)
         plate = m3d.Manifold.cube([plate_w, plate_h, extrude_h]).translate(
-            [cx - plate_w / 2.0, cy - plate_h / 2.0, z_top]
+            [cx - plate_w / 2.0, cy - plate_h / 2.0, z_bottom]
         )
         logo_bodies = [plate]
 
@@ -411,5 +502,5 @@ def build_logo(results: List[BodyResult]) -> Tuple[BodyResult, None]:
     for b in logo_bodies[1:]:
         merged = merged + b
 
-    br = BodyResult(name="Logo", role="logo", hex_color=LIME_HEX, bodies=[merged])
+    br = BodyResult(name="Logo", role="logo", hex_color=WHITE_HEX, bodies=[merged])
     return br, None
