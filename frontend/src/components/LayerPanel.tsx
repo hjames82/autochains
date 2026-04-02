@@ -212,21 +212,26 @@ function ParamField({ label, value, onChange, type = 'text', options, placeholde
           {options.map(o => <option key={o} value={o}>{o}</option>)}
         </select>
       ) : type === 'hex' ? (
-        <div className={styles.hexRow}>
-          <input
-            type="color"
-            className={styles.hexPicker}
-            value={hexColor || '#CCCCCC'}
-            onChange={e => onChange(e.target.value.replace('#', '').toUpperCase())}
-          />
-          <input
-            className={styles.paramInput}
-            value={value}
-            placeholder={placeholder}
-            onChange={e => onChange(e.target.value.replace('#', '').toUpperCase())}
-            maxLength={6}
-          />
-        </div>
+        <>
+          <div className={styles.hexRow}>
+            <input
+              type="color"
+              className={styles.hexPicker}
+              value={hexColor || '#CCCCCC'}
+              onChange={e => onChange(e.target.value.replace('#', '').toUpperCase())}
+            />
+            <input
+              className={`${styles.paramInput} ${value && !/^[0-9A-Fa-f]{6}$/.test(value) ? styles.paramInputError : ''}`}
+              value={value}
+              placeholder={placeholder}
+              onChange={e => onChange(e.target.value.replace('#', '').toUpperCase())}
+              maxLength={6}
+            />
+          </div>
+          {value && !/^[0-9A-Fa-f]{6}$/.test(value) && (
+            <span className={styles.fieldError}>Must be 6 hex digits (e.g. FFFFFF)</span>
+          )}
+        </>
       ) : (
         <input
           className={styles.paramInput}

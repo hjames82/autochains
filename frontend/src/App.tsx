@@ -11,6 +11,7 @@ const POLL_INTERVAL = 1200
 export default function App() {
   const [layers, setLayers] = useState<LayerFile[]>([])
   const [scale, setScale] = useState(1.0)
+  const [mode, setMode] = useState<'SVG' | 'DXF'>('SVG')
   const [jobId, setJobId] = useState<string | null>(null)
   const [jobStatus, setJobStatus] = useState<JobStatus>('idle')
   const [jobLogs, setJobLogs] = useState<string[]>([])
@@ -101,7 +102,7 @@ export default function App() {
 
     const fd = new FormData()
     fd.append('scale', String(scale))
-    fd.append('mode', 'SVG')
+    fd.append('mode', mode)
     for (const layer of layers) {
       const newFile = new File([layer.file], layer.file.name, { type: layer.file.type })
       fd.append('files', newFile)
@@ -148,7 +149,7 @@ export default function App() {
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [])
 
-  const state: AppState = { layers, scale, jobId, jobStatus, jobLogs, jobError, modelUrl, stlUrl, stats }
+  const state: AppState = { layers, scale, mode, jobId, jobStatus, jobLogs, jobError, modelUrl, stlUrl, stats }
 
   return (
     <div className={styles.layout}>
@@ -185,6 +186,7 @@ export default function App() {
             state={state}
             scale={scale}
             onScaleChange={setScale}
+            onModeChange={setMode}
             onGenerate={generate}
             onSwap={swap}
           />

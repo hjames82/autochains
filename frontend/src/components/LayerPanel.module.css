@@ -262,6 +262,16 @@
   border-color: var(--accent);
 }
 
+.paramInputError {
+  border-color: var(--danger) !important;
+}
+
+.fieldError {
+  font-size: 9px;
+  color: var(--danger);
+  line-height: 1.3;
+}
+
 .hexRow {
   display: flex;
   gap: 6px;

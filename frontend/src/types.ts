@@ -20,6 +20,7 @@ export type JobStatus = 'idle' | 'pending' | 'running' | 'done' | 'error'
 export interface AppState {
   layers: LayerFile[]
   scale: number
+  mode: 'SVG' | 'DXF'
   jobId: string | null
   jobStatus: JobStatus
   jobLogs: string[]

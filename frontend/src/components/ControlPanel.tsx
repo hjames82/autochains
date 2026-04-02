@@ -12,12 +12,13 @@ interface Props {
   state: AppState
   scale: number
   onScaleChange: (v: number) => void
+  onModeChange: (m: 'SVG' | 'DXF') => void
   onGenerate: () => void
   onSwap: (component: string) => void
 }
 
-export default function ControlPanel({ state, scale, onScaleChange, onGenerate, onSwap }: Props) {
-  const { layers, jobStatus, jobLogs, jobError, modelUrl, stlUrl, stats } = state
+export default function ControlPanel({ state, scale, onScaleChange, onModeChange, onGenerate, onSwap }: Props) {
+  const { layers, mode, jobStatus, jobLogs, jobError, modelUrl, stlUrl, stats } = state
   const busy = jobStatus === 'pending' || jobStatus === 'running'
   const done = jobStatus === 'done'
   const canGenerate = layers.length > 0 && !busy
@@ -30,7 +31,7 @@ export default function ControlPanel({ state, scale, onScaleChange, onGenerate, 
     a.click()
   }
 
-  const handleGltfDownload = () => {
+  const handleGlbDownload = () => {
     if (!modelUrl) return
     const a = document.createElement('a')
     a.href = modelUrl
@@ -62,7 +63,12 @@ export default function ControlPanel({ state, scale, onScaleChange, onGenerate, 
 
         <div className={styles.field}>
           <label className={styles.label}>Input Mode</label>
-          <select className={styles.select} disabled>
+          <select
+            className={styles.select}
+            value={mode}
+            onChange={e => onModeChange(e.target.value as 'SVG' | 'DXF')}
+            disabled={busy}
+          >
             <option value="SVG">SVG (Recommended)</option>
             <option value="DXF">DXF</option>
           </select>
@@ -179,7 +185,7 @@ export default function ControlPanel({ state, scale, onScaleChange, onGenerate, 
             </svg>
             STL
           </button>
-          <button className={styles.exportBtn} onClick={handleGltfDownload} disabled={!done}>
+          <button className={styles.exportBtn} onClick={handleGlbDownload} disabled={!done}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="7 10 12 15 17 10"/>
               <line x1="12" y1="15" x2="12" y2="3"/>
