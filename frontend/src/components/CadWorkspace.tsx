@@ -306,6 +306,10 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   // Tracks the file name last analyzed so we don't re-trigger on re-renders
   const lastAnalyzedNameRef = useRef<string | null>(null)
+  // Stable refs used by the auto-preview debounce effect
+  const buildModelRef = useRef<() => Promise<void>>(async () => {})
+  const jobStatusRef  = useRef<JobStatus>('idle')
+  const [previewPending, setPreviewPending] = useState(false)
 
   // ── SVG Analysis ────────────────────────────────────────────────────────────
   const handleSvgFile = useCallback(async (file: File) => {
@@ -451,6 +455,28 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
       setJobError(String(e))
     }
   }, [cadLayers, groups, svgSize, startPolling])
+
+  // Keep stable refs in sync so debounce effect never captures a stale closure
+  useEffect(() => { buildModelRef.current = buildModel }, [buildModel])
+  useEffect(() => { jobStatusRef.current  = jobStatus  }, [jobStatus])
+
+  // ── Auto-preview: debounced rebuild whenever features change ─────────────────
+  useEffect(() => {
+    const hasEnabledFeatures =
+      cadLayers.some(l => l.features.some(f => f.enabled)) ||
+      groups.some(g => g.features.some(f => f.enabled))
+
+    if (!hasEnabledFeatures) return
+
+    setPreviewPending(true)
+    const t = setTimeout(() => {
+      setPreviewPending(false)
+      if (jobStatusRef.current !== 'running' && jobStatusRef.current !== 'pending') {
+        buildModelRef.current()
+      }
+    }, 1800)
+    return () => clearTimeout(t)
+  }, [cadLayers, groups])
 
   // ── Layer mutations ──────────────────────────────────────────────────────────
   const updateLayer = useCallback((layerId: string, updates: Partial<CadLayerState>) => {
@@ -729,7 +755,7 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
         {svgPreviewUrl && !modelUrl && jobStatus === 'idle' && (
           <div className={styles.svgCenterPreview}>
             <div className={styles.svgCenterLabel}>
-              SVG Preview — add features to layers and click Build 3D Model
+              SVG Preview — add a feature to any layer and a 3D preview will appear automatically
             </div>
             <img
               className={styles.svgCenterImg}
@@ -744,6 +770,17 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
           )}
           {hasLayers && !canBuild && (
             <span className={styles.buildHint}>Select a layer or group and add at least one feature (e.g. Extrude)</span>
+          )}
+          {previewPending && canBuild && jobStatus === 'idle' && (
+            <span className={styles.previewPendingBadge}>
+              <span className={styles.previewPendingDot} />
+              Computing preview…
+            </span>
+          )}
+          {modelUrl && jobStatus === 'done' && !previewPending && (
+            <span className={styles.viewerHint}>
+              Orbit: click + drag &nbsp;·&nbsp; Zoom: scroll &nbsp;·&nbsp; Pan: right-click + drag
+            </span>
           )}
           {canBuild && (
             <button
