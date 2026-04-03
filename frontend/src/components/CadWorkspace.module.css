@@ -476,8 +476,6 @@
 .svgLayerSlice {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: stretch;
 }
 
 /* Override the inline width/height/background from each layer's svg_preview */

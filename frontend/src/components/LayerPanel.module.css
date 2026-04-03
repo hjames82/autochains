@@ -379,8 +379,7 @@
 
 .layerThumb svg {
   width: 100% !important;
-  height: auto !important;
-  max-height: 76px;
+  height: 76px !important;
   display: block;
 }
 
