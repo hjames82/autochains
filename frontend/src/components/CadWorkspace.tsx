@@ -289,6 +289,8 @@ export default function CadWorkspace() {
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
   const [selection, setSelection] = useState<Selection | null>(null)
 
+  const [svgPreviewUrl, setSvgPreviewUrl] = useState<string | null>(null)
+
   const [jobStatus, setJobStatus] = useState<JobStatus>('idle')
   const [jobLogs, setJobLogs] = useState<string[]>([])
   const [jobError, setJobError] = useState<string | null>(null)
@@ -300,6 +302,8 @@ export default function CadWorkspace() {
 
   // ── SVG Analysis ────────────────────────────────────────────────────────────
   const handleSvgFile = useCallback(async (file: File) => {
+    // Revoke any previous preview URL to avoid memory leaks
+    setSvgPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file) })
     setAnalyzing(true)
     setAnalyzeError(null)
     setDetectedLayers([])
@@ -705,6 +709,19 @@ export default function CadWorkspace() {
       {/* ── Center: 3D Viewer ── */}
       <main className={styles.viewerArea}>
         <ViewerPanel state={viewerState} />
+        {/* SVG 2D Preview — shown when an SVG is loaded but no 3D model exists */}
+        {svgPreviewUrl && !modelUrl && jobStatus === 'idle' && (
+          <div className={styles.svgCenterPreview}>
+            <div className={styles.svgCenterLabel}>
+              SVG Preview — add features to layers and click Build 3D Model
+            </div>
+            <img
+              className={styles.svgCenterImg}
+              src={svgPreviewUrl}
+              alt="SVG preview"
+            />
+          </div>
+        )}
         <div className={styles.buildBar}>
           {!hasLayers && (
             <span className={styles.buildHint}>Upload an SVG to detect layers and apply CAD operations</span>
