@@ -49,6 +49,7 @@ export function makeLayerFile(file: File): LayerFile {
     file,
     params,
     sortKey: parseLevelSortKey(params.lvl),
+    visible: true,
   }
 }
 

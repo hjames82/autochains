@@ -288,13 +288,12 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [detectedLayers, setDetectedLayers] = useState<SvgLayerDef[]>([])
   const [svgSize, setSvgSize] = useState<{ w: number; h: number }>({ w: 100, h: 100 })
+  const [viewboxStr, setViewboxStr] = useState('0 0 100 100')
   const [sourceType, setSourceType] = useState<string>('')
   const [cadLayers, setCadLayers] = useState<CadLayerState[]>([])
   const [groups, setGroups] = useState<CadGroupState[]>([])
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
   const [selection, setSelection] = useState<Selection | null>(null)
-
-  const [svgPreviewUrl, setSvgPreviewUrl] = useState<string | null>(null)
 
   const [jobStatus, setJobStatus] = useState<JobStatus>('idle')
   const [jobLogs, setJobLogs] = useState<string[]>([])
@@ -315,8 +314,6 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
   const handleSvgFile = useCallback(async (file: File) => {
     lastAnalyzedNameRef.current = file.name
     onFileUploaded?.(file)
-    // Revoke any previous preview URL to avoid memory leaks
-    setSvgPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file) })
     setAnalyzing(true)
     setAnalyzeError(null)
     setDetectedLayers([])
@@ -342,6 +339,7 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
       const data = await r.json()
       setDetectedLayers(data.layers ?? [])
       setSvgSize(data.svg_size ?? { w: 100, h: 100 })
+      setViewboxStr(data.viewbox ?? `0 0 ${(data.svg_size ?? { w: 100 }).w} ${(data.svg_size ?? { h: 100 }).h}`)
       setSourceType(data.source_type ?? 'unknown')
       setCadLayers((data.layers ?? []).map(layerToState))
       if (data.layers?.length > 0) {
@@ -751,17 +749,26 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
       {/* ── Center: 3D Viewer ── */}
       <main className={styles.viewerArea}>
         <ViewerPanel state={viewerState} />
-        {/* SVG 2D Preview — shown when an SVG is loaded but no 3D model exists */}
-        {svgPreviewUrl && !modelUrl && jobStatus === 'idle' && (
+        {/* SVG 2D Preview — inline composite of visible layers, shown when loaded but no 3D model */}
+        {detectedLayers.length > 0 && !modelUrl && jobStatus === 'idle' && (
           <div className={styles.svgCenterPreview}>
             <div className={styles.svgCenterLabel}>
               SVG Preview — add a feature to any layer and a 3D preview will appear automatically
             </div>
-            <img
+            <svg
               className={styles.svgCenterImg}
-              src={svgPreviewUrl}
-              alt="SVG preview"
-            />
+              viewBox={viewboxStr}
+              xmlns="http://www.w3.org/2000/svg"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              {detectedLayers.map(def => {
+                const cadLayer = cadLayers.find(l => l.layerId === def.id)
+                if (cadLayer && !cadLayer.visible) return null
+                return def.paths.map((d, i) => (
+                  <path key={`${def.id}-${i}`} d={d} fill={def.color} fillOpacity={0.85} />
+                ))
+              })}
+            </svg>
           </div>
         )}
         <div className={styles.buildBar}>

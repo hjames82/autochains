@@ -14,6 +14,7 @@ export interface LayerFile {
   file: File
   params: LayerParams
   sortKey: number
+  visible: boolean
   svgPreview?: string   // inline SVG HTML thumbnail from backend analysis
 }
 

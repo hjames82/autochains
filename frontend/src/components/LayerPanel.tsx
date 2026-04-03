@@ -8,10 +8,11 @@ interface Props {
   onAddFiles: (files: FileList | File[]) => void
   onRemoveLayer: (id: string) => void
   onUpdateLayer: (id: string, updates: Partial<LayerFile>) => void
+  onToggleVisibility: (id: string) => void
   analyzing?: boolean
 }
 
-export default function LayerPanel({ layers, onAddFiles, onRemoveLayer, onUpdateLayer, analyzing }: Props) {
+export default function LayerPanel({ layers, onAddFiles, onRemoveLayer, onUpdateLayer, onToggleVisibility, analyzing }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -107,6 +108,7 @@ export default function LayerPanel({ layers, onAddFiles, onRemoveLayer, onUpdate
                 expanded={expandedId === layer.id}
                 onToggle={() => toggleExpand(layer.id)}
                 onRemove={() => onRemoveLayer(layer.id)}
+                onToggleVisibility={() => onToggleVisibility(layer.id)}
                 onUpdateParam={(field, value) => updateParam(layer, field, value)}
               />
             ))}
@@ -129,16 +131,18 @@ interface CardProps {
   expanded: boolean
   onToggle: () => void
   onRemove: () => void
+  onToggleVisibility: () => void
   onUpdateParam: (field: keyof LayerParams, value: string) => void
 }
 
-function LayerCard({ layer, expanded, onToggle, onRemove, onUpdateParam }: CardProps) {
+function LayerCard({ layer, expanded, onToggle, onRemove, onToggleVisibility, onUpdateParam }: CardProps) {
   const { params } = layer
   const hexColor = `#${params.hex || 'CCCCCC'}`
   const roleColor = ROLE_COLORS[params.rol] ?? '#666'
+  const isHidden = !layer.visible
 
   return (
-    <div className={`${styles.layerCard} ${expanded ? styles.layerCardExpanded : ''}`}>
+    <div className={`${styles.layerCard} ${expanded ? styles.layerCardExpanded : ''} ${isHidden ? styles.layerCardHidden : ''}`}>
       {layer.svgPreview && (
         <div
           className={styles.layerThumb}
@@ -147,7 +151,7 @@ function LayerCard({ layer, expanded, onToggle, onRemove, onUpdateParam }: CardP
       )}
       <div className={styles.cardRow} onClick={onToggle} role="button" tabIndex={0}
         onKeyDown={e => e.key === 'Enter' && onToggle()}>
-        <div className={styles.colorSwatch} style={{ background: hexColor }} />
+        <div className={styles.colorSwatch} style={{ background: hexColor, opacity: isHidden ? 0.35 : 1 }} />
         <div className={styles.layerInfo}>
           <span className={styles.layerName}>{params.sem || layer.file.name}</span>
           <div className={styles.layerMeta}>
@@ -157,6 +161,24 @@ function LayerCard({ layer, expanded, onToggle, onRemove, onUpdateParam }: CardP
           </div>
         </div>
         <div className={styles.cardActions}>
+          <button
+            className={`${styles.visBtn} ${isHidden ? styles.visBtnHidden : ''}`}
+            title={isHidden ? 'Show layer' : 'Hide layer'}
+            onClick={e => { e.stopPropagation(); onToggleVisibility() }}
+          >
+            {isHidden ? (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            ) : (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            )}
+          </button>
           <button
             className={styles.editBtn}
             title="Edit parameters"

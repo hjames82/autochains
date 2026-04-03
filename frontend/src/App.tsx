@@ -137,6 +137,10 @@ export default function App() {
     setLayers(prev => prev.filter(l => l.id !== id))
   }, [])
 
+  const toggleLayerVisibility = useCallback((id: string) => {
+    setLayers(prev => prev.map(l => l.id === id ? { ...l, visible: !l.visible } : l))
+  }, [])
+
   const updateLayer = useCallback((id: string, updates: Partial<LayerFile>) => {
     setLayers(prev => {
       const next = prev.map(l => l.id === id ? { ...l, ...updates } : l)
@@ -190,7 +194,8 @@ export default function App() {
   }, [])
 
   const generate = useCallback(async () => {
-    if (!layers.length) return
+    const visibleLayers = layers.filter(l => l.visible)
+    if (!visibleLayers.length) return
     setJobStatus('pending')
     setJobLogs([])
     setJobError(null)
@@ -201,7 +206,7 @@ export default function App() {
     const fd = new FormData()
     fd.append('scale', String(scale))
     fd.append('mode', mode)
-    for (const layer of layers) {
+    for (const layer of visibleLayers) {
       const newFile = new File([layer.file], layer.file.name, { type: layer.file.type })
       fd.append('files', newFile)
     }
@@ -303,6 +308,7 @@ export default function App() {
                 onAddFiles={addFiles}
                 onRemoveLayer={removeLayer}
                 onUpdateLayer={updateLayer}
+                onToggleVisibility={toggleLayerVisibility}
                 analyzing={classicAnalyzing}
               />
             </aside>
