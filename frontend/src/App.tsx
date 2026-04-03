@@ -6,8 +6,22 @@ import CadWorkspace from './components/CadWorkspace'
 import ErrorBoundary from './components/ErrorBoundary'
 import DebugPanel from './components/DebugPanel'
 import styles from './App.module.css'
-import { AppState, LayerFile, JobStatus } from './types'
+import { AppState, LayerFile, JobStatus, SvgLayerDef } from './types'
 import { makeLayerFile } from './utils/parseLayer'
+
+// ── Helpers for SVG layer expansion ───────────────────────────────────────────
+function sanitizeSem(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/^_+|_+$/g, '').slice(0, 30) || 'Layer'
+}
+
+function buildLayerSvg(paths: string[], color: string, viewbox: string): string {
+  const pathEls = paths
+    .map(d => `  <path d="${d.replace(/"/g, '&quot;')}" fill="${color}" fill-opacity="0.85"/>`)
+    .join('\n')
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewbox}">\n${pathEls}\n</svg>`
+}
+
+const LEVEL_LADDER = ['h0', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7'] as const
 
 // Initialise fetch interceptor (side-effect import — must come after React)
 import './utils/debugLogger'
@@ -19,6 +33,7 @@ export default function App() {
 
   // ── Shared SVG file (synced between modes) ─────────────────────────────────
   const [sharedSvgFile, setSharedSvgFile] = useState<File | null>(null)
+  const [classicAnalyzing, setClassicAnalyzing] = useState(false)
 
   // ── Classic pipeline state ─────────────────────────────────────────────────
   const [layers, setLayers] = useState<LayerFile[]>([])
@@ -34,13 +49,57 @@ export default function App() {
   const [stats, setStats] = useState<Record<string, unknown> | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const addFiles = useCallback((incoming: FileList | File[]) => {
+  const addFiles = useCallback(async (incoming: FileList | File[]) => {
     const svgs = Array.from(incoming).filter(f => f.name.toLowerCase().endsWith('.svg'))
     if (!svgs.length) return
-    setSharedSvgFile(svgs[0])
+
+    // Files that already follow the lvl= naming convention pass through unchanged
+    const named   = svgs.filter(f => f.name.includes('lvl='))
+    const unnamed = svgs.filter(f => !f.name.includes('lvl='))
+
+    const filesToAdd: File[] = [...named]
+
+    if (unnamed.length > 0) {
+      setClassicAnalyzing(true)
+      try {
+        for (const svgFile of unnamed) {
+          const fd = new FormData()
+          fd.append('file', svgFile)
+          const r = await fetch('/api/analyze-svg', { method: 'POST', body: fd })
+          if (!r.ok) { filesToAdd.push(svgFile); continue }
+
+          const data = await r.json()
+          const detectedLayers = data.layers as SvgLayerDef[]
+          const viewbox: string = data.viewbox ?? '0 0 100 100'
+
+          // Single / monolithic result → keep original file as one layer
+          if (detectedLayers.length <= 1) {
+            filesToAdd.push(svgFile)
+          } else {
+            // Multiple layers → reconstruct one SVG per layer and auto-name it
+            detectedLayers.forEach((layer, i) => {
+              const hex  = layer.color.replace('#', '').toUpperCase().padEnd(6, '0')
+              const sem  = sanitizeSem(layer.name || `Layer${i + 1}`)
+              const lvl  = LEVEL_LADDER[Math.min(i, LEVEL_LADDER.length - 1)]
+              const filename = `lvl=${lvl}__sem=${sem}__rol=base__hex=${hex}.svg`
+              const svgContent = buildLayerSvg(layer.paths, layer.color, viewbox)
+              const blob = new Blob([svgContent], { type: 'image/svg+xml' })
+              filesToAdd.push(new File([blob], filename, { type: 'image/svg+xml' }))
+            })
+          }
+        }
+      } catch {
+        filesToAdd.push(...unnamed)
+      } finally {
+        setClassicAnalyzing(false)
+      }
+    }
+
+    if (!filesToAdd.length) return
+    setSharedSvgFile(filesToAdd[0])
     setLayers(prev => {
       const existingIds = new Set(prev.map(l => l.file.name))
-      const newEntries = svgs
+      const newEntries = filesToAdd
         .filter(f => !existingIds.has(f.name))
         .map(makeLayerFile)
       const merged = [...prev, ...newEntries]
@@ -230,6 +289,7 @@ export default function App() {
                 onAddFiles={addFiles}
                 onRemoveLayer={removeLayer}
                 onUpdateLayer={updateLayer}
+                analyzing={classicAnalyzing}
               />
             </aside>
             <main className={styles.viewer}>

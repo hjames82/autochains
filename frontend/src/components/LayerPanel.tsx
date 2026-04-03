@@ -8,9 +8,10 @@ interface Props {
   onAddFiles: (files: FileList | File[]) => void
   onRemoveLayer: (id: string) => void
   onUpdateLayer: (id: string, updates: Partial<LayerFile>) => void
+  analyzing?: boolean
 }
 
-export default function LayerPanel({ layers, onAddFiles, onRemoveLayer, onUpdateLayer }: Props) {
+export default function LayerPanel({ layers, onAddFiles, onRemoveLayer, onUpdateLayer, analyzing }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -86,7 +87,15 @@ export default function LayerPanel({ layers, onAddFiles, onRemoveLayer, onUpdate
       </div>
 
       <div className={styles.layerList}>
-        {layers.length === 0 ? (
+        {analyzing && (
+          <div className={styles.analyzingMsg}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={styles.spinIcon}>
+              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+            Detecting layers…
+          </div>
+        )}
+        {!analyzing && layers.length === 0 ? (
           <p className={styles.emptyMsg}>No layers yet — upload SVG files above</p>
         ) : (
           <>
