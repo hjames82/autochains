@@ -288,7 +288,6 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [detectedLayers, setDetectedLayers] = useState<SvgLayerDef[]>([])
   const [svgSize, setSvgSize] = useState<{ w: number; h: number }>({ w: 100, h: 100 })
-  const [viewboxStr, setViewboxStr] = useState('0 0 100 100')
   const [sourceType, setSourceType] = useState<string>('')
   const [cadLayers, setCadLayers] = useState<CadLayerState[]>([])
   const [groups, setGroups] = useState<CadGroupState[]>([])
@@ -339,7 +338,6 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
       const data = await r.json()
       setDetectedLayers(data.layers ?? [])
       setSvgSize(data.svg_size ?? { w: 100, h: 100 })
-      setViewboxStr(data.viewbox ?? `0 0 ${(data.svg_size ?? { w: 100 }).w} ${(data.svg_size ?? { h: 100 }).h}`)
       setSourceType(data.source_type ?? 'unknown')
       setCadLayers((data.layers ?? []).map(layerToState))
       if (data.layers?.length > 0) {
@@ -749,26 +747,25 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
       {/* ── Center: 3D Viewer ── */}
       <main className={styles.viewerArea}>
         <ViewerPanel state={viewerState} />
-        {/* SVG 2D Preview — inline composite of visible layers, shown when loaded but no 3D model */}
-        {detectedLayers.length > 0 && !modelUrl && jobStatus === 'idle' && (
+        {/* SVG 2D Preview — composite of visible layer previews, shown while no 3D model is ready */}
+        {detectedLayers.length > 0 && !modelUrl && jobStatus !== 'running' && jobStatus !== 'pending' && (
           <div className={styles.svgCenterPreview}>
             <div className={styles.svgCenterLabel}>
               SVG Preview — add a feature to any layer and a 3D preview will appear automatically
             </div>
-            <svg
-              className={styles.svgCenterImg}
-              viewBox={viewboxStr}
-              xmlns="http://www.w3.org/2000/svg"
-              preserveAspectRatio="xMidYMid meet"
-            >
+            <div className={styles.svgCompositeWrap}>
               {detectedLayers.map(def => {
                 const cadLayer = cadLayers.find(l => l.layerId === def.id)
                 if (cadLayer && !cadLayer.visible) return null
-                return def.paths.map((d, i) => (
-                  <path key={`${def.id}-${i}`} d={d} fill={def.color} fillOpacity={0.85} />
-                ))
+                return (
+                  <div
+                    key={def.id}
+                    className={styles.svgLayerSlice}
+                    dangerouslySetInnerHTML={{ __html: def.svg_preview }}
+                  />
+                )
               })}
-            </svg>
+            </div>
           </div>
         )}
         <div className={styles.buildBar}>

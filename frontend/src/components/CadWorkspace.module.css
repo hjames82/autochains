@@ -446,8 +446,8 @@
   inset: 34px 0 36px 0; /* below toolbar, above status bar */
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: flex-start;
   background: #131313;
   gap: 12px;
   padding: 20px;
@@ -461,13 +461,31 @@
   flex-shrink: 0;
 }
 
-.svgCenterImg {
-  max-width: 100%;
-  max-height: calc(100% - 40px);
-  object-fit: contain;
+.svgCompositeWrap {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
   border-radius: 6px;
   border: 1px solid #2e2e2e;
   background: #1a1a1a;
+  overflow: hidden;
+}
+
+/* Each layer preview slice sits absolutely on top of each other */
+.svgLayerSlice {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+/* Override the inline width/height/background from each layer's svg_preview */
+.svgLayerSlice svg {
+  width: 100% !important;
+  height: 100% !important;
+  background: transparent !important;
+  display: block;
 }
 
 /* ── Preview pending badge ──────────────────────────────────────────────────── */
