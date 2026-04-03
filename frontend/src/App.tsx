@@ -226,7 +226,7 @@ export default function App() {
       setJobStatus('error')
       setJobError(String(e))
     }
-  }, [layers, scale, startPolling])
+  }, [layers, scale, mode, startPolling])
 
   const swap = useCallback(async (component: string) => {
     if (!jobId || jobStatus !== 'done') return

@@ -94,6 +94,12 @@ AutoChains_V85.py   Original Fusion script (reference for geometry engine logic)
 | CAD Workspace (SVG Analyzer + CAD Tools backend) | Done |
 | CAD Workspace (Frontend: CadWorkspace + ToolPanel) | Done |
 
+## Bug Fixes Applied
+
+- **`_split_at_z` bounding_box API** (`pipeline.py`): `manifold3d.bounding_box()` returns a 6-tuple `(xmin, ymin, zmin, xmax, ymax, zmax)` not an object with `.min`/`.max` attrs. Fixed to use tuple unpacking.
+- **`generate` stale closure** (`App.tsx`): Added `mode` to the `useCallback` dependency array to prevent stale mode value on generation.
+- **CAD winding fix** (`cad_tools.py`): `_paths_to_polygons` calls `shapely_orient(p, sign=1.0)` on all polygons (CCW). All `_shapely_to_crosssection` calls use `flip_y=False` since `extract_polygons_from_svg` already applies Y-flip.
+
 ## Layer Naming Convention
 
 SVG filenames must follow: `lvl=h2__sem=Body__rol=core__par=Base__col=White__hex=FFFFFF.svg`

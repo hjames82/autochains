@@ -25,6 +25,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import manifold3d as m3d
 import numpy as np
 from shapely.geometry import Polygon, MultiPolygon
+from shapely.geometry.polygon import orient as shapely_orient
 from shapely.ops import unary_union
 from shapely.validation import make_valid
 
@@ -69,7 +70,11 @@ def _shapely_to_crosssection(polys: List[Polygon], flip_y: bool = True) -> Optio
         return None
 
 def _paths_to_polygons(paths: List[str], svg_size: Dict) -> List[Polygon]:
-    """Convert SVG path-data strings to Shapely Polygons via a temporary SVG."""
+    """Convert SVG path-data strings to Shapely Polygons via a temporary SVG.
+
+    Returns polygons normalized to CCW exterior winding so they can be passed
+    directly to _shapely_to_crosssection(flip_y=False) without double-flipping.
+    """
     w = svg_size.get("w", 100)
     h = svg_size.get("h", 100)
     body = "\n".join(f'<path d="{d}"/>' for d in paths)
@@ -80,7 +85,10 @@ def _paths_to_polygons(paths: List[str], svg_size: Dict) -> List[Polygon]:
     ).encode()
     try:
         polys = extract_polygons_from_svg(svg_bytes)
-        return polys if polys else []
+        if not polys:
+            return []
+        # Normalize to CCW exterior (sign=1.0) so manifold3d treats them as outer rings.
+        return [shapely_orient(p, sign=1.0) for p in polys]
     except Exception as e:
         log.debug("paths_to_polygons failed: %s", e)
         return []
@@ -89,7 +97,7 @@ def _paths_to_polygons(paths: List[str], svg_size: Dict) -> List[Polygon]:
 def _apply_extrude(polys: List[Polygon], params: Dict) -> Optional[m3d.Manifold]:
     height = float(params.get("height", 5.0))
     taper  = float(params.get("taper_angle", 0.0))
-    cs = _shapely_to_crosssection(polys)
+    cs = _shapely_to_crosssection(polys, flip_y=False)
     if cs is None or cs.area() < 1e-6:
         return None
     if taper != 0.0:
@@ -112,7 +120,7 @@ def _apply_press_pull(body: m3d.Manifold, polys: List[Polygon], params: Dict) ->
     z_min = float(verts[:, 2].min())
     current_h = z_max - z_min
     new_h = max(0.1, current_h + delta)
-    cs = _shapely_to_crosssection(polys)
+    cs = _shapely_to_crosssection(polys, flip_y=False)
     if cs is None:
         return body
     return m3d.Manifold.extrude(cs, new_h).translate([0.0, 0.0, z_min])
@@ -161,7 +169,7 @@ def _apply_fillet(body: m3d.Manifold, polys: List[Polygon], params: Dict, height
                 rounded.append(make_valid(p))
         if not rounded:
             return body
-        cs = _shapely_to_crosssection(rounded)
+        cs = _shapely_to_crosssection(rounded, flip_y=False)
         if cs is None:
             return body
         if body.is_empty():
@@ -195,7 +203,7 @@ def _apply_shell(body: m3d.Manifold, polys: List[Polygon], params: Dict) -> m3d.
                 inner_polys.append(make_valid(shrunk))
         if not inner_polys:
             return body
-        cs_inner = _shapely_to_crosssection(inner_polys)
+        cs_inner = _shapely_to_crosssection(inner_polys, flip_y=False)
         if cs_inner is None:
             return body
         inner_h = (z_max - z_min) - thickness   # keep a floor

@@ -202,11 +202,13 @@ def _split_at_z(
     """
     try:
         bounds = man.bounding_box()
-        if z <= bounds.min[2] or z >= bounds.max[2]:
+        # bounds = (xmin, ymin, zmin, xmax, ymax, zmax)
+        x_min, y_min, z_min_b, x_max, y_max, z_max_b = bounds
+        if z <= z_min_b or z >= z_max_b:
             return man, None
 
-        extent = max(bounds.max[0] - bounds.min[0], bounds.max[1] - bounds.min[1]) * 2 + 10.0
-        height = bounds.max[2] - bounds.min[2] + 10.0
+        extent = max(x_max - x_min, y_max - y_min) * 2 + 10.0
+        height = z_max_b - z_min_b + 10.0
 
         cutter = m3d.Manifold.cube([extent, extent, height])
         cutter = cutter.translate([-extent / 2, -extent / 2, z])
