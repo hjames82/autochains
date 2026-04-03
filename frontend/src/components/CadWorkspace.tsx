@@ -278,7 +278,12 @@ function GroupCard({
 // ── Selection union type ───────────────────────────────────────────────────────
 type Selection = { kind: 'layer'; id: string } | { kind: 'group'; id: string }
 
-export default function CadWorkspace() {
+interface CadWorkspaceProps {
+  initialFile?: File | null
+  onFileUploaded?: (file: File) => void
+}
+
+export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspaceProps) {
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [detectedLayers, setDetectedLayers] = useState<SvgLayerDef[]>([])
@@ -299,9 +304,13 @@ export default function CadWorkspace() {
   const [stlUrl, setStlUrl] = useState<string | null>(null)
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Tracks the file name last analyzed so we don't re-trigger on re-renders
+  const lastAnalyzedNameRef = useRef<string | null>(null)
 
   // ── SVG Analysis ────────────────────────────────────────────────────────────
   const handleSvgFile = useCallback(async (file: File) => {
+    lastAnalyzedNameRef.current = file.name
+    onFileUploaded?.(file)
     // Revoke any previous preview URL to avoid memory leaks
     setSvgPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file) })
     setAnalyzing(true)
@@ -339,7 +348,14 @@ export default function CadWorkspace() {
     } finally {
       setAnalyzing(false)
     }
-  }, [])
+  }, [onFileUploaded])
+
+  // Auto-analyze when a file is provided from the parent (mode switch)
+  useEffect(() => {
+    if (!initialFile) return
+    if (lastAnalyzedNameRef.current === initialFile.name) return
+    handleSvgFile(initialFile)
+  }, [initialFile, handleSvgFile])
 
   // ── Polling ─────────────────────────────────────────────────────────────────
   const startPolling = useCallback((id: string) => {

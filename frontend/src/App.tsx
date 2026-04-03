@@ -17,6 +17,9 @@ const POLL_INTERVAL = 1200
 export default function App() {
   const [appMode, setAppMode] = useState<'classic' | 'cad'>('classic')
 
+  // ── Shared SVG file (synced between modes) ─────────────────────────────────
+  const [sharedSvgFile, setSharedSvgFile] = useState<File | null>(null)
+
   // ── Classic pipeline state ─────────────────────────────────────────────────
   const [layers, setLayers] = useState<LayerFile[]>([])
   const [scale, setScale] = useState(1.0)
@@ -34,12 +37,24 @@ export default function App() {
   const addFiles = useCallback((incoming: FileList | File[]) => {
     const svgs = Array.from(incoming).filter(f => f.name.toLowerCase().endsWith('.svg'))
     if (!svgs.length) return
+    setSharedSvgFile(svgs[0])
     setLayers(prev => {
       const existingIds = new Set(prev.map(l => l.file.name))
       const newEntries = svgs
         .filter(f => !existingIds.has(f.name))
         .map(makeLayerFile)
       const merged = [...prev, ...newEntries]
+      merged.sort((a, b) => a.sortKey - b.sortKey)
+      return merged
+    })
+  }, [])
+
+  // Called by CadWorkspace when the user uploads an SVG there
+  const handleCadFileUploaded = useCallback((file: File) => {
+    setSharedSvgFile(file)
+    setLayers(prev => {
+      if (prev.some(l => l.file.name === file.name)) return prev
+      const merged = [...prev, makeLayerFile(file)]
       merged.sort((a, b) => a.sortKey - b.sortKey)
       return merged
     })
@@ -232,7 +247,10 @@ export default function App() {
             </aside>
           </>
         ) : (
-          <CadWorkspace />
+          <CadWorkspace
+            initialFile={sharedSvgFile}
+            onFileUploaded={handleCadFileUploaded}
+          />
         )}
       </div>
       <DebugPanel />
