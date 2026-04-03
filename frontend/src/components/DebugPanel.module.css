@@ -1,0 +1,149 @@
+/* ── Toggle button ─────────────────────────────────────────────────────────── */
+.openBtn {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  z-index: 9998;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 20px;
+  color: #888;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: all 0.14s;
+}
+.openBtn:hover { background: #252525; color: #ccc; border-color: #555; }
+
+/* ── Panel ──────────────────────────────────────────────────────────────────── */
+.panel {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  width: 540px;
+  max-width: 100vw;
+  height: 420px;
+  background: #111;
+  border: 1px solid #2e2e2e;
+  border-bottom: none;
+  border-right: none;
+  border-radius: 10px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 9999;
+  box-shadow: -4px -4px 24px rgba(0,0,0,0.6);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid #2a2a2a;
+  flex-shrink: 0;
+  background: #161616;
+  border-radius: 10px 0 0 0;
+}
+.panelTitle { font-size: 12px; font-weight: 700; color: #e0e0e0; flex: 1; }
+.shortcut { font-size: 10px; color: #444; font-family: sans-serif; }
+.refreshBtn {
+  background: none; border: none; color: #555; cursor: pointer; font-size: 14px;
+  padding: 1px 4px; border-radius: 3px;
+}
+.refreshBtn:hover { color: #c4f500; }
+.closeBtn {
+  background: none; border: none; color: #555; cursor: pointer; font-size: 12px;
+  padding: 1px 5px; border-radius: 3px;
+}
+.closeBtn:hover { color: #f87171; }
+
+/* ── Tabs ────────────────────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 8px;
+  border-bottom: 1px solid #222;
+  flex-shrink: 0;
+}
+.tab {
+  background: none; border: 1px solid transparent; border-radius: 4px;
+  color: #555; font-size: 11px; font-family: sans-serif; padding: 3px 8px; cursor: pointer;
+  transition: all 0.12s;
+}
+.tab:hover { color: #aaa; }
+.tabActive { border-color: #333; background: #1e1e1e; color: #ddd; }
+.clearBtn {
+  margin-left: auto; background: none; border: 1px solid #2a2a2a; border-radius: 4px;
+  color: #444; font-size: 10px; font-family: sans-serif; padding: 2px 7px; cursor: pointer;
+}
+.clearBtn:hover { color: #f87171; border-color: rgba(248,113,113,0.3); }
+
+/* ── Body ────────────────────────────────────────────────────────────────────── */
+.body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+}
+.empty { color: #444; font-family: sans-serif; font-size: 11px; padding: 20px 14px; }
+.fetchState { color: #666; font-family: sans-serif; font-size: 11px; padding: 12px 14px; }
+.fetchError { color: #f87171; font-family: sans-serif; font-size: 11px; padding: 12px 14px; }
+.jsonBlock {
+  margin: 0; padding: 10px 14px;
+  color: #9dc; font-size: 10.5px; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-all;
+}
+
+/* ── API Call rows ───────────────────────────────────────────────────────────── */
+.callRow {
+  border-bottom: 1px solid #1a1a1a;
+}
+.callRowErr { background: rgba(248,113,113,0.04); }
+
+.callSummary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.callSummary:hover { background: rgba(255,255,255,0.03); }
+
+.methodTag {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.05em;
+  border-radius: 3px; padding: 1px 5px; flex-shrink: 0; text-transform: uppercase;
+}
+.method_get    { background: rgba(96,165,250,0.15); color: #60a5fa; }
+.method_post   { background: rgba(196,245,0,0.12); color: #c4f500; }
+.method_put    { background: rgba(251,191,36,0.12); color: #fbbf24; }
+.method_delete { background: rgba(248,113,113,0.12); color: #f87171; }
+
+.callUrl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aaa; }
+.callMs  { color: #555; font-size: 10px; flex-shrink: 0; }
+.callTs  { color: #444; font-size: 10px; flex-shrink: 0; }
+
+.badgePending { color: #555; }
+.badgeOk    { color: #4ade80; font-weight: 700; }
+.badgeWarn  { color: #fbbf24; font-weight: 700; }
+.badgeError { color: #f87171; font-weight: 700; }
+
+.callDetail { padding: 6px 10px 10px; border-top: 1px solid #1e1e1e; }
+.callDetailFull { color: #777; margin-bottom: 5px; word-break: break-all; }
+.callError { color: #f87171; margin-bottom: 5px; }
+
+.callSection { margin-top: 6px; }
+.callSectionLabel {
+  font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: #555; margin-bottom: 3px;
+}
+.callBody {
+  background: #0e0e0e; border: 1px solid #1e1e1e; border-radius: 4px;
+  padding: 6px 8px; margin: 0; color: #9dc; font-size: 10px; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-all;
+  max-height: 180px; overflow-y: auto;
+}

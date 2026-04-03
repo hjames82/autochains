@@ -3,9 +3,14 @@ import LayerPanel from './components/LayerPanel'
 import ViewerPanel from './components/ViewerPanel'
 import ControlPanel from './components/ControlPanel'
 import CadWorkspace from './components/CadWorkspace'
+import ErrorBoundary from './components/ErrorBoundary'
+import DebugPanel from './components/DebugPanel'
 import styles from './App.module.css'
 import { AppState, LayerFile, JobStatus } from './types'
 import { makeLayerFile } from './utils/parseLayer'
+
+// Initialise fetch interceptor (side-effect import — must come after React)
+import './utils/debugLogger'
 
 const POLL_INTERVAL = 1200
 
@@ -154,6 +159,7 @@ export default function App() {
   const state: AppState = { layers, scale, mode, jobId, jobStatus, jobLogs, jobError, modelUrl, stlUrl, stats }
 
   return (
+    <ErrorBoundary>
     <div className={styles.layout}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
@@ -226,6 +232,8 @@ export default function App() {
           <CadWorkspace />
         )}
       </div>
+      <DebugPanel />
     </div>
+    </ErrorBoundary>
   )
 }

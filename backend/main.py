@@ -1,17 +1,55 @@
 import os
+import sys
+import time
 import uuid
+import platform
 import asyncio
 import logging
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Optional, Literal
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, JSONResponse
 
-logging.basicConfig(level=logging.INFO)
+# ── Structured logging ────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+log = logging.getLogger("autochains")
+
+# Silence noisy third-party loggers in production
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+logging.getLogger("watchfiles").setLevel(logging.WARNING)
+
+
+# ── Startup: log environment & package availability ───────────────────────────
+def _log_startup_diagnostics() -> None:
+    log.info("=" * 60)
+    log.info("AutoChains Web API starting")
+    log.info("Python %s on %s", sys.version, platform.system())
+    log.info("CWD: %s", os.getcwd())
+
+    packages = [
+        "fastapi", "uvicorn", "manifold3d", "trimesh",
+        "shapely", "svgpathtools", "numpy", "lxml",
+    ]
+    for pkg in packages:
+        try:
+            mod = __import__(pkg)
+            ver = getattr(mod, "__version__", "?")
+            log.info("  ✓ %-20s %s", pkg, ver)
+        except ImportError as e:
+            log.warning("  ✗ %-20s NOT FOUND — %s", pkg, e)
+
+    log.info("=" * 60)
+
+
+_log_startup_diagnostics()
 
 app = FastAPI(title="AutoChains Web API", version="2.0.0")
 
@@ -28,6 +66,44 @@ executor = ThreadPoolExecutor(max_workers=4)
 jobs: Dict[str, dict] = {}
 
 JOBS_DIR = tempfile.mkdtemp(prefix="autochains_jobs_")
+
+# ── Request timing + access log middleware ────────────────────────────────────
+_request_log: list[dict] = []  # last 50 requests kept in memory
+_MAX_REQUEST_LOG = 50
+
+
+@app.middleware("http")
+async def request_timing_middleware(request: Request, call_next):
+    start = time.perf_counter()
+    req_entry: dict = {
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "method": request.method,
+        "path": request.url.path,
+        "query": str(request.url.query) if request.url.query else None,
+        "client": request.client.host if request.client else None,
+    }
+    log.debug("→ %s %s", request.method, request.url.path)
+    try:
+        response = await call_next(request)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        req_entry.update({"status": response.status_code, "ms": round(elapsed_ms, 1)})
+        level = logging.WARNING if response.status_code >= 400 else logging.DEBUG
+        log.log(level, "← %s %s  %d  %.1f ms",
+                request.method, request.url.path, response.status_code, elapsed_ms)
+        return response
+    except Exception as exc:
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        req_entry.update({"status": 500, "ms": round(elapsed_ms, 1), "error": str(exc)})
+        log.exception("✗ Unhandled exception in %s %s after %.1f ms",
+                      request.method, request.url.path, elapsed_ms)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(exc), "path": request.url.path},
+        )
+    finally:
+        _request_log.append(req_entry)
+        if len(_request_log) > _MAX_REQUEST_LOG:
+            _request_log.pop(0)
 
 
 def _run_pipeline_sync(job_id: str, svg_files: dict, scale: float, mode: str) -> None:
@@ -85,7 +161,87 @@ def _run_pipeline_sync(job_id: str, svg_files: dict, scale: float, mode: str) ->
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    """Extended health check with runtime diagnostics."""
+    pkg_versions: dict[str, str] = {}
+    for pkg in ["fastapi", "manifold3d", "trimesh", "shapely", "svgpathtools", "numpy", "lxml"]:
+        try:
+            mod = __import__(pkg)
+            pkg_versions[pkg] = getattr(mod, "__version__", "?")
+        except ImportError:
+            pkg_versions[pkg] = "MISSING"
+
+    job_counts = {"total": len(jobs)}
+    for status in ("pending", "running", "done", "error"):
+        job_counts[status] = sum(1 for j in jobs.values() if j.get("status") == status)
+
+    return {
+        "status": "ok",
+        "python": sys.version,
+        "platform": platform.system(),
+        "packages": pkg_versions,
+        "jobs": job_counts,
+        "jobs_dir": JOBS_DIR,
+        "uptime_jobs_dir_exists": os.path.isdir(JOBS_DIR),
+    }
+
+
+@app.get("/api/debug/requests")
+def debug_requests():
+    """Return the last 50 HTTP requests with timing and status codes."""
+    return {"requests": list(reversed(_request_log))}
+
+
+@app.get("/api/debug/jobs")
+def debug_jobs():
+    """Return full job state — including logs and tracebacks — for every job."""
+    safe_jobs = {}
+    for jid, job in jobs.items():
+        safe_jobs[jid] = {
+            "status": job.get("status"),
+            "logs": job.get("logs", []),
+            "error": job.get("error"),
+            "traceback": job.get("traceback"),
+            "has_glb": bool(job.get("glb_path") and os.path.exists(job["glb_path"])),
+            "has_stl": bool(job.get("stl_path") and os.path.exists(job["stl_path"])),
+            "stats": job.get("stats"),
+        }
+    return {"jobs": safe_jobs, "count": len(safe_jobs)}
+
+
+@app.get("/api/debug/system")
+def debug_system():
+    """Full system diagnostics: env, paths, package details."""
+    import importlib.util
+
+    package_details: dict[str, dict] = {}
+    for pkg in ["fastapi", "manifold3d", "trimesh", "shapely",
+                "svgpathtools", "numpy", "lxml", "uvicorn"]:
+        spec = importlib.util.find_spec(pkg)
+        try:
+            mod = __import__(pkg)
+            package_details[pkg] = {
+                "version": getattr(mod, "__version__", "?"),
+                "location": spec.origin if spec else None,
+                "available": True,
+            }
+        except ImportError as e:
+            package_details[pkg] = {"available": False, "error": str(e)}
+
+    safe_env = {
+        k: v for k, v in os.environ.items()
+        if not any(s in k.upper() for s in ("SECRET", "KEY", "TOKEN", "PASSWORD", "PASS"))
+    }
+
+    return {
+        "python_version": sys.version,
+        "python_executable": sys.executable,
+        "platform": platform.platform(),
+        "cwd": os.getcwd(),
+        "jobs_dir": JOBS_DIR,
+        "sys_path": sys.path[:8],
+        "packages": package_details,
+        "env": safe_env,
+    }
 
 
 @app.post("/api/generate")
