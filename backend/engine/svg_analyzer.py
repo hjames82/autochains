@@ -199,11 +199,21 @@ def _bbox_from_paths(paths: List[str]) -> Dict[str, float]:
 
 def _make_preview(paths: List[str], color: str,
                   vbx: float, vby: float, vbw: float, vbh: float) -> str:
-    """Generate a compact SVG thumbnail showing only the given paths."""
+    """Generate a compact SVG thumbnail with tight bounding box around paths."""
+    sample = paths[:80]
     path_els = "".join(
         f'<path d="{d}" fill="{color}" fill-opacity="0.85" stroke="{color}" stroke-width="0.5"/>'
-        for d in paths[:80]
+        for d in sample
     )
+    # Use tight bounding box so paths fill the thumbnail, not the full SVG viewport
+    if sample:
+        bounds = _bbox_from_paths(sample)
+        if bounds["w"] > 0 and bounds["h"] > 0:
+            pad = max(bounds["w"], bounds["h"]) * 0.08
+            vbx = bounds["x"] - pad
+            vby = bounds["y"] - pad
+            vbw = bounds["w"] + 2 * pad
+            vbh = bounds["h"] + 2 * pad
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" '
         f'viewBox="{vbx} {vby} {vbw} {vbh}" '

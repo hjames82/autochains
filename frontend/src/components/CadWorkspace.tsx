@@ -287,6 +287,7 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [detectedLayers, setDetectedLayers] = useState<SvgLayerDef[]>([])
+  const [svgViewBox, setSvgViewBox] = useState<string>('0 0 100 100')
   const [svgSize, setSvgSize] = useState<{ w: number; h: number }>({ w: 100, h: 100 })
   const [sourceType, setSourceType] = useState<string>('')
   const [cadLayers, setCadLayers] = useState<CadLayerState[]>([])
@@ -337,6 +338,7 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
       }
       const data = await r.json()
       setDetectedLayers(data.layers ?? [])
+      setSvgViewBox(data.viewbox ?? '0 0 100 100')
       setSvgSize(data.svg_size ?? { w: 100, h: 100 })
       setSourceType(data.source_type ?? 'unknown')
       setCadLayers((data.layers ?? []).map(layerToState))
@@ -754,17 +756,26 @@ export default function CadWorkspace({ initialFile, onFileUploaded }: CadWorkspa
               SVG Preview — add a feature to any layer and a 3D preview will appear automatically
             </div>
             <div className={styles.svgCompositeWrap}>
-              {detectedLayers.map(def => {
-                const cadLayer = cadLayers.find(l => l.layerId === def.id)
-                if (cadLayer && !cadLayer.visible) return null
-                return (
-                  <div
-                    key={def.id}
-                    className={styles.svgLayerSlice}
-                    dangerouslySetInnerHTML={{ __html: def.svg_preview }}
-                  />
-                )
-              })}
+              {/* Single SVG with full viewBox so all layers share the same coordinate space */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox={svgViewBox}
+                width="100%"
+                height="100%"
+                style={{ display: 'block' }}
+              >
+                {detectedLayers.map(def => {
+                  const cadLayer = cadLayers.find(l => l.layerId === def.id)
+                  if (cadLayer && !cadLayer.visible) return null
+                  return (
+                    <g key={def.id} fill={def.color} fillOpacity={0.85} stroke={def.color} strokeWidth={0.5}>
+                      {def.paths.map((d, i) => (
+                        <path key={i} d={d} />
+                      ))}
+                    </g>
+                  )
+                })}
+              </svg>
             </div>
           </div>
         )}
