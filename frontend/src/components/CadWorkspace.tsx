@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, DragEvent, ChangeEvent } from 'react'
-import { SvgLayerDef, CadLayerState, CadFeature, CadFeatureType, CadMaterial, JobStatus } from '../types'
+import { SvgLayerDef, CadLayerState, CadGroupState, CadFeature, CadFeatureType, CadMaterial, JobStatus } from '../types'
 import ViewerPanel from './ViewerPanel'
 import ToolPanel from './ToolPanel'
 import styles from './CadWorkspace.module.css'
@@ -27,6 +27,7 @@ function makeViewerState(
   jobStatus: JobStatus,
   jobLogs: string[],
   jobError: string | null,
+  jobTraceback: string | null,
   modelUrl: string | null,
   stlUrl: string | null,
 ) {
@@ -38,6 +39,7 @@ function makeViewerState(
     jobStatus,
     jobLogs,
     jobError,
+    jobTraceback,
     modelUrl,
     stlUrl,
     stats: null,
@@ -116,23 +118,37 @@ function LayerCard({
   layer,
   def,
   selected,
+  checked,
+  inGroup,
   onSelect,
   onToggleVisible,
+  onToggleCheck,
 }: {
   layer: CadLayerState
   def?: SvgLayerDef
   selected: boolean
+  checked: boolean
+  inGroup?: boolean
   onSelect: () => void
   onToggleVisible: () => void
+  onToggleCheck: () => void
 }) {
   return (
     <div
-      className={`${styles.layerCard} ${selected ? styles.layerCardSelected : ''} ${!layer.visible ? styles.layerCardHidden : ''}`}
+      className={`${styles.layerCard} ${selected ? styles.layerCardSelected : ''} ${!layer.visible ? styles.layerCardHidden : ''} ${inGroup ? styles.layerCardInGroup : ''}`}
       onClick={onSelect}
       role="button"
       tabIndex={0}
       onKeyDown={e => e.key === 'Enter' && onSelect()}
     >
+      <input
+        type="checkbox"
+        className={styles.layerCheck}
+        checked={checked}
+        onChange={onToggleCheck}
+        onClick={e => e.stopPropagation()}
+        title="Select for grouping"
+      />
       <div className={styles.layerSwatch} style={{ background: layer.color }} />
       <div className={styles.layerInfo}>
         <span className={styles.layerName}>{layer.name}</span>
@@ -164,7 +180,104 @@ function LayerCard({
   )
 }
 
+// ── Group Card ─────────────────────────────────────────────────────────────────
+function GroupCard({
+  group,
+  memberLayers,
+  memberDefs,
+  selected,
+  onSelectGroup,
+  onSelectMember,
+  onToggleVisible,
+  onToggleExpanded,
+  onDisband,
+  selectedLayerId,
+}: {
+  group: CadGroupState
+  memberLayers: CadLayerState[]
+  memberDefs: (SvgLayerDef | undefined)[]
+  selected: boolean
+  onSelectGroup: () => void
+  onSelectMember: (id: string) => void
+  onToggleVisible: () => void
+  onToggleExpanded: () => void
+  onDisband: () => void
+  selectedLayerId: string | null
+}) {
+  return (
+    <div className={styles.groupBlock}>
+      <div
+        className={`${styles.groupHeader} ${selected ? styles.groupHeaderSelected : ''}`}
+        onClick={onSelectGroup}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => e.key === 'Enter' && onSelectGroup()}
+      >
+        <button
+          className={styles.groupExpand}
+          onClick={e => { e.stopPropagation(); onToggleExpanded() }}
+          title={group.expanded ? 'Collapse' : 'Expand'}
+        >
+          {group.expanded ? '▼' : '▶'}
+        </button>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, opacity: 0.7 }}>
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <path d="M8 21h8M12 17v4"/>
+        </svg>
+        <span className={styles.groupName}>{group.name}</span>
+        {group.features.length > 0 && (
+          <span className={styles.featuresBadge}>{group.features.length} op{group.features.length !== 1 ? 's' : ''}</span>
+        )}
+        <button
+          className={`${styles.visBtn} ${!group.visible ? styles.visBtnOff : ''}`}
+          title={group.visible ? 'Hide group' : 'Show group'}
+          onClick={e => { e.stopPropagation(); onToggleVisible() }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            {group.visible ? (
+              <>
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </>
+            ) : (
+              <>
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </>
+            )}
+          </svg>
+        </button>
+        <button
+          className={styles.disbandBtn}
+          title="Disband group"
+          onClick={e => { e.stopPropagation(); onDisband() }}
+        >✕</button>
+      </div>
+      {group.expanded && memberLayers.map((layer, i) => (
+        <div key={layer.layerId} className={styles.groupMemberRow}>
+          <div className={styles.groupMemberIndent} />
+          <div
+            className={`${styles.layerCard} ${styles.layerCardInGroup} ${selectedLayerId === layer.layerId ? styles.layerCardSelected : ''} ${!layer.visible ? styles.layerCardHidden : ''}`}
+            onClick={() => onSelectMember(layer.layerId)}
+            role="button"
+            tabIndex={0}
+          >
+            <div className={styles.layerSwatch} style={{ background: layer.color }} />
+            <div className={styles.layerInfo}>
+              <span className={styles.layerName}>{layer.name}</span>
+              <span className={styles.layerMeta}>{memberDefs[i]?.path_count ?? 0} paths</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Main Workspace ────────────────────────────────────────────────────────────
+// ── Selection union type ───────────────────────────────────────────────────────
+type Selection = { kind: 'layer'; id: string } | { kind: 'group'; id: string }
+
 export default function CadWorkspace() {
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
@@ -172,11 +285,14 @@ export default function CadWorkspace() {
   const [svgSize, setSvgSize] = useState<{ w: number; h: number }>({ w: 100, h: 100 })
   const [sourceType, setSourceType] = useState<string>('')
   const [cadLayers, setCadLayers] = useState<CadLayerState[]>([])
-  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
+  const [groups, setGroups] = useState<CadGroupState[]>([])
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
+  const [selection, setSelection] = useState<Selection | null>(null)
 
   const [jobStatus, setJobStatus] = useState<JobStatus>('idle')
   const [jobLogs, setJobLogs] = useState<string[]>([])
   const [jobError, setJobError] = useState<string | null>(null)
+  const [jobTraceback, setJobTraceback] = useState<string | null>(null)
   const [modelUrl, setModelUrl] = useState<string | null>(null)
   const [stlUrl, setStlUrl] = useState<string | null>(null)
 
@@ -188,11 +304,14 @@ export default function CadWorkspace() {
     setAnalyzeError(null)
     setDetectedLayers([])
     setCadLayers([])
-    setSelectedLayerId(null)
+    setGroups([])
+    setCheckedIds(new Set())
+    setSelection(null)
     setModelUrl(null)
     setStlUrl(null)
     setJobStatus('idle')
     setJobLogs([])
+    setJobTraceback(null)
 
     try {
       const fd = new FormData()
@@ -209,7 +328,7 @@ export default function CadWorkspace() {
       setSourceType(data.source_type ?? 'unknown')
       setCadLayers((data.layers ?? []).map(layerToState))
       if (data.layers?.length > 0) {
-        setSelectedLayerId(data.layers[0].id)
+        setSelection({ kind: 'layer', id: data.layers[0].id })
       }
     } catch (e) {
       setAnalyzeError(String(e))
@@ -236,6 +355,7 @@ export default function CadWorkspace() {
           clearInterval(pollRef.current!)
           setJobStatus('error')
           setJobError(data.error ?? 'Unknown error')
+          setJobTraceback(data.traceback ?? null)
         } else {
           setJobStatus(data.status as JobStatus)
         }
@@ -257,8 +377,11 @@ export default function CadWorkspace() {
     setJobError(null)
     setModelUrl(null)
 
-    const payload = {
-      layers: cadLayers.map(l => ({
+    const groupedIds = new Set(groups.flatMap(g => g.layerIds))
+
+    const ungroupedLayers = cadLayers
+      .filter(l => !groupedIds.has(l.layerId))
+      .map(l => ({
         id: l.layerId,
         name: l.name,
         color: l.color,
@@ -266,7 +389,26 @@ export default function CadWorkspace() {
         visible: l.visible,
         features: l.features.filter(f => f.enabled),
         material: l.material,
-      })),
+      }))
+
+    const groupLayers = groups
+      .filter(g => g.visible)
+      .map(g => {
+        const memberPaths = g.layerIds.flatMap(lid => cadLayers.find(l => l.layerId === lid)?.paths ?? [])
+        const memberColor = cadLayers.find(l => l.layerId === g.layerIds[0])?.color ?? g.material.color
+        return {
+          id: g.id,
+          name: g.name,
+          color: memberColor,
+          paths: memberPaths,
+          visible: true,
+          features: g.features.filter(f => f.enabled),
+          material: g.material,
+        }
+      })
+
+    const payload = {
+      layers: [...ungroupedLayers, ...groupLayers],
       svg_size: svgSize,
       combine_ops: [],
     }
@@ -288,7 +430,7 @@ export default function CadWorkspace() {
       setJobStatus('error')
       setJobError(String(e))
     }
-  }, [cadLayers, svgSize, startPolling])
+  }, [cadLayers, groups, svgSize, startPolling])
 
   // ── Layer mutations ──────────────────────────────────────────────────────────
   const updateLayer = useCallback((layerId: string, updates: Partial<CadLayerState>) => {
@@ -348,12 +490,117 @@ export default function CadWorkspace() {
     }))
   }, [])
 
+  // ── Derived selection state ──────────────────────────────────────────────────
+  const selectedLayerId = selection?.kind === 'layer' ? selection.id : null
+  const selectedGroupId = selection?.kind === 'group' ? selection.id : null
   const selectedLayer = cadLayers.find(l => l.layerId === selectedLayerId) ?? null
+  const selectedGroup = groups.find(g => g.id === selectedGroupId) ?? null
+  const allLayerIdsInGroups = new Set(groups.flatMap(g => g.layerIds))
 
-  const viewerState = makeViewerState(jobStatus, jobLogs, jobError, modelUrl, stlUrl)
+  // Virtual CadLayerState for groups (so ToolPanel works unchanged)
+  const selectedGroupAsLayer: CadLayerState | null = selectedGroup ? {
+    layerId: selectedGroup.id,
+    name: selectedGroup.name,
+    color: selectedGroup.material.color,
+    paths: selectedGroup.layerIds.flatMap(lid => cadLayers.find(l => l.layerId === lid)?.paths ?? []),
+    visible: selectedGroup.visible,
+    features: selectedGroup.features,
+    material: selectedGroup.material,
+  } : null
+
+  const selectedItem: CadLayerState | null = selectedLayer ?? selectedGroupAsLayer
+
+  // ── Group functions ──────────────────────────────────────────────────────────
+  const _groupCounterRef = useRef(0)
+  const createGroup = useCallback((name: string, ids: string[]) => {
+    if (ids.length < 2) return
+    const id = `group-${Date.now()}-${++_groupCounterRef.current}`
+    setGroups(prev => [...prev, {
+      id,
+      name,
+      layerIds: ids,
+      features: [],
+      material: { ...DEFAULT_MATERIAL },
+      visible: true,
+      expanded: true,
+    }])
+    setCheckedIds(new Set())
+    setSelection({ kind: 'group', id })
+  }, [])
+
+  const disbandGroup = useCallback((groupId: string) => {
+    setGroups(prev => prev.filter(g => g.id !== groupId))
+    setSelection(prev => prev?.kind === 'group' && prev.id === groupId ? null : prev)
+  }, [])
+
+  const updateGroup = useCallback((groupId: string, updates: Partial<CadGroupState>) => {
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, ...updates } : g))
+  }, [])
+
+  const addGroupFeature = useCallback((groupId: string, type: CadFeatureType) => {
+    const defaultParams: Record<CadFeatureType, object> = {
+      extrude:    { height: 5.0, taper_angle: 0 },
+      press_pull: { delta: 2.0 },
+      revolve:    { degrees: 360, axis: 'Y', segments: 36 },
+      fillet:     { radius: 1.0, mode: 'outer' },
+      shell:      { thickness: 1.5 },
+      holes:      { holes: [{ x: 0, y: 0, r: 2, depth: 5 }] },
+      combine:    { target_layer_id: '', operation: 'union' },
+      split:      { plane_z: 5.0, keep: 'bottom' },
+      translate:  { x: 0, y: 0, z: 0 },
+      rotate:     { x: 0, y: 0, z: 0 },
+    }
+    const feat: CadFeature = {
+      id: newFeatureId(),
+      type,
+      params: { ...defaultParams[type] } as CadFeature['params'],
+      enabled: true,
+    }
+    setGroups(prev => prev.map(g => g.id === groupId ? { ...g, features: [...g.features, feat] } : g))
+  }, [])
+
+  const removeGroupFeature = useCallback((groupId: string, featId: string) => {
+    setGroups(prev => prev.map(g =>
+      g.id === groupId ? { ...g, features: g.features.filter(f => f.id !== featId) } : g
+    ))
+  }, [])
+
+  const updateGroupFeature = useCallback((groupId: string, featId: string, updates: Partial<CadFeature>) => {
+    setGroups(prev => prev.map(g =>
+      g.id === groupId
+        ? { ...g, features: g.features.map(f => f.id === featId ? { ...f, ...updates } : f) }
+        : g
+    ))
+  }, [])
+
+  const moveGroupFeature = useCallback((groupId: string, featId: string, dir: -1 | 1) => {
+    setGroups(prev => prev.map(g => {
+      if (g.id !== groupId) return g
+      const idx = g.features.findIndex(f => f.id === featId)
+      if (idx < 0) return g
+      const next = idx + dir
+      if (next < 0 || next >= g.features.length) return g
+      const feats = [...g.features]
+      ;[feats[idx], feats[next]] = [feats[next], feats[idx]]
+      return { ...g, features: feats }
+    }))
+  }, [])
+
+  const toggleCheck = useCallback((layerId: string) => {
+    setCheckedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(layerId)) next.delete(layerId)
+      else next.add(layerId)
+      return next
+    })
+  }, [])
+
+  const viewerState = makeViewerState(jobStatus, jobLogs, jobError, jobTraceback, modelUrl, stlUrl)
 
   const hasLayers = cadLayers.length > 0
-  const canBuild = hasLayers && cadLayers.some(l => l.visible && l.features.length > 0)
+  const ungroupedWithFeatures = cadLayers.some(l => l.visible && l.features.length > 0 && !allLayerIdsInGroups.has(l.layerId))
+  const groupsWithFeatures = groups.some(g => g.visible && g.features.length > 0)
+  const canBuild = hasLayers && (ungroupedWithFeatures || groupsWithFeatures)
 
   return (
     <div className={styles.workspace}>
@@ -373,16 +620,64 @@ export default function CadWorkspace() {
         {hasLayers && (
           <div className={styles.layerList}>
             <p className={styles.listLabel}>{cadLayers.length} LAYER{cadLayers.length !== 1 ? 'S' : ''} DETECTED</p>
-            {cadLayers.map(layer => (
-              <LayerCard
-                key={layer.layerId}
-                layer={layer}
-                def={detectedLayers.find(d => d.id === layer.layerId)}
-                selected={selectedLayerId === layer.layerId}
-                onSelect={() => setSelectedLayerId(layer.layerId)}
-                onToggleVisible={() => updateLayer(layer.layerId, { visible: !layer.visible })}
+
+            {/* Group action bar: shown when 2+ layers are checked */}
+            {checkedIds.size >= 2 && (
+              <div className={styles.groupActionBar}>
+                <span className={styles.groupActionCount}>{checkedIds.size} selected</span>
+                <button
+                  className={styles.groupActionBtn}
+                  onClick={() => {
+                    const name = `Group ${groups.length + 1}`
+                    createGroup(name, Array.from(checkedIds))
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                    <path d="M8 21h8M12 17v4"/>
+                  </svg>
+                  Group {checkedIds.size} layers
+                </button>
+                <button
+                  className={styles.groupActionCancel}
+                  onClick={() => setCheckedIds(new Set())}
+                  title="Clear selection"
+                >✕</button>
+              </div>
+            )}
+
+            {/* Groups */}
+            {groups.map(group => (
+              <GroupCard
+                key={group.id}
+                group={group}
+                memberLayers={group.layerIds.map(id => cadLayers.find(l => l.layerId === id)!).filter(Boolean)}
+                memberDefs={group.layerIds.map(id => detectedLayers.find(d => d.id === id))}
+                selected={selectedGroupId === group.id}
+                selectedLayerId={selectedLayerId}
+                onSelectGroup={() => setSelection({ kind: 'group', id: group.id })}
+                onSelectMember={id => setSelection({ kind: 'layer', id })}
+                onToggleVisible={() => updateGroup(group.id, { visible: !group.visible })}
+                onToggleExpanded={() => updateGroup(group.id, { expanded: !group.expanded })}
+                onDisband={() => disbandGroup(group.id)}
               />
             ))}
+
+            {/* Ungrouped layers */}
+            {cadLayers
+              .filter(l => !allLayerIdsInGroups.has(l.layerId))
+              .map(layer => (
+                <LayerCard
+                  key={layer.layerId}
+                  layer={layer}
+                  def={detectedLayers.find(d => d.id === layer.layerId)}
+                  selected={selectedLayerId === layer.layerId}
+                  checked={checkedIds.has(layer.layerId)}
+                  onSelect={() => setSelection({ kind: 'layer', id: layer.layerId })}
+                  onToggleVisible={() => updateLayer(layer.layerId, { visible: !layer.visible })}
+                  onToggleCheck={() => toggleCheck(layer.layerId)}
+                />
+              ))}
           </div>
         )}
 
@@ -393,7 +688,7 @@ export default function CadWorkspace() {
               <div
                 key={def.id}
                 className={`${styles.previewCard} ${selectedLayerId === def.id ? styles.previewCardSelected : ''}`}
-                onClick={() => setSelectedLayerId(def.id)}
+                onClick={() => setSelection({ kind: 'layer', id: def.id })}
                 title={def.name}
               >
                 <div
@@ -415,7 +710,7 @@ export default function CadWorkspace() {
             <span className={styles.buildHint}>Upload an SVG to detect layers and apply CAD operations</span>
           )}
           {hasLayers && !canBuild && (
-            <span className={styles.buildHint}>Select a layer on the right and add at least one feature (e.g. Extrude)</span>
+            <span className={styles.buildHint}>Select a layer or group and add at least one feature (e.g. Extrude)</span>
           )}
           {canBuild && (
             <button
@@ -450,15 +745,31 @@ export default function CadWorkspace() {
 
       {/* ── Right Panel: Tool Panel ── */}
       <aside className={styles.rightPanel}>
-        {selectedLayer ? (
+        {selectedItem ? (
           <ToolPanel
-            layer={selectedLayer}
+            layer={selectedItem}
             allLayers={cadLayers}
-            onAddFeature={type => addFeature(selectedLayer.layerId, type)}
-            onRemoveFeature={featId => removeFeature(selectedLayer.layerId, featId)}
-            onUpdateFeature={(featId, updates) => updateFeature(selectedLayer.layerId, featId, updates)}
-            onMoveFeature={(featId, dir) => moveFeature(selectedLayer.layerId, featId, dir)}
-            onUpdateMaterial={mat => updateLayer(selectedLayer.layerId, { material: mat })}
+            groupLabel={selectedGroup ? `Group: ${selectedGroup.name}` : undefined}
+            onAddFeature={type => {
+              if (selectedGroup) addGroupFeature(selectedGroup.id, type)
+              else if (selectedLayer) addFeature(selectedLayer.layerId, type)
+            }}
+            onRemoveFeature={featId => {
+              if (selectedGroup) removeGroupFeature(selectedGroup.id, featId)
+              else if (selectedLayer) removeFeature(selectedLayer.layerId, featId)
+            }}
+            onUpdateFeature={(featId, updates) => {
+              if (selectedGroup) updateGroupFeature(selectedGroup.id, featId, updates)
+              else if (selectedLayer) updateFeature(selectedLayer.layerId, featId, updates)
+            }}
+            onMoveFeature={(featId, dir) => {
+              if (selectedGroup) moveGroupFeature(selectedGroup.id, featId, dir)
+              else if (selectedLayer) moveFeature(selectedLayer.layerId, featId, dir)
+            }}
+            onUpdateMaterial={mat => {
+              if (selectedGroup) updateGroup(selectedGroup.id, { material: mat })
+              else if (selectedLayer) updateLayer(selectedLayer.layerId, { material: mat })
+            }}
           />
         ) : (
           <div className={styles.noSelection}>

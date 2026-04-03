@@ -26,6 +26,7 @@ export interface AppState {
   jobStatus: JobStatus
   jobLogs: string[]
   jobError: string | null
+  jobTraceback: string | null
   modelUrl: string | null
   stlUrl: string | null
   stats: Record<string, unknown> | null
@@ -113,4 +114,14 @@ export interface CadLayerState {
   visible: boolean
   features: CadFeature[]
   material: CadMaterial
+}
+
+export interface CadGroupState {
+  id: string
+  name: string
+  layerIds: string[]
+  features: CadFeature[]
+  material: CadMaterial
+  visible: boolean
+  expanded: boolean
 }

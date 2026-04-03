@@ -22,7 +22,9 @@ interface Props {
 }
 
 export default function ViewerPanel({ state }: Props) {
-  const { jobStatus, jobLogs, modelUrl, stlUrl } = state
+  const { jobStatus, jobLogs, jobError, jobTraceback, modelUrl, stlUrl } = state
+  const [showTrace, setShowTrace] = useState(false)
+  const [showErrLogs, setShowErrLogs] = useState(false)
   const canvasRef = useRef<HTMLDivElement>(null)
   const [webglUnavailable, setWebglUnavailable] = useState(false)
   const sceneRef = useRef<{
@@ -304,7 +306,35 @@ export default function ViewerPanel({ state }: Props) {
             <div className={styles.errorBox}>
               <div className={styles.errorIcon}>⚠</div>
               <p className={styles.errorTitle}>Generation failed</p>
-              <p className={styles.errorMsg}>{state.jobError}</p>
+              <p className={styles.errorMsg}>{jobError}</p>
+              {jobLogs.length > 0 && (
+                <div className={styles.errorDetails}>
+                  <button
+                    className={styles.errorToggle}
+                    onClick={() => setShowErrLogs(v => !v)}
+                  >
+                    {showErrLogs ? '▲' : '▼'} Processing log ({jobLogs.length} steps)
+                  </button>
+                  {showErrLogs && (
+                    <div className={styles.errorLog}>
+                      {jobLogs.map((l, i) => <div key={i} className={styles.errorLogLine}>{l}</div>)}
+                    </div>
+                  )}
+                </div>
+              )}
+              {jobTraceback && (
+                <div className={styles.errorDetails}>
+                  <button
+                    className={styles.errorToggle}
+                    onClick={() => setShowTrace(v => !v)}
+                  >
+                    {showTrace ? '▲' : '▼'} Technical details
+                  </button>
+                  {showTrace && (
+                    <pre className={styles.errorTrace}>{jobTraceback}</pre>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

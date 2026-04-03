@@ -99,7 +99,12 @@ def extract_profiles(
 
     raw_polys: List[Polygon] = []
     for path in paths:
-        if not path.isclosed():
+        try:
+            closed = path.isclosed()
+        except (AssertionError, Exception):
+            # svgpathtools raises AssertionError on discontinuous/malformed paths
+            continue
+        if not closed:
             continue
         poly = _path_to_polygon(path, scale=scale, n_samples=n_samples)
         if poly is not None:

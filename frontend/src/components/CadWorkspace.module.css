@@ -304,3 +304,138 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── Group Action Bar ─────────────────────────────────────────────────────── */
+.groupActionBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  margin-bottom: 4px;
+  background: rgba(196, 245, 0, 0.08);
+  border: 1px solid rgba(196, 245, 0, 0.25);
+  border-radius: 6px;
+}
+
+.groupActionCount {
+  font-size: 10px;
+  color: var(--accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.groupActionBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  padding: 3px 7px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.groupActionBtn:hover { background: #b8e000; }
+
+.groupActionCancel {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.groupActionCancel:hover { color: var(--text); }
+
+/* ── Group Block ──────────────────────────────────────────────────────────── */
+.groupBlock {
+  margin-bottom: 3px;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px 5px 6px;
+  border: 1px solid rgba(127, 0, 255, 0.35);
+  border-radius: 6px;
+  background: rgba(127, 0, 255, 0.08);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.groupHeader:hover { background: rgba(127, 0, 255, 0.14); }
+
+.groupHeaderSelected {
+  border-color: rgba(127, 0, 255, 0.7);
+  background: rgba(127, 0, 255, 0.18);
+}
+
+.groupExpand {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 8px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.groupExpand:hover { color: var(--text); }
+
+.groupName {
+  font-size: 11px;
+  font-weight: 600;
+  color: #c084fc;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.disbandBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 3px;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+.disbandBtn:hover { opacity: 1; color: var(--danger, #ef4444); }
+
+.groupMemberRow {
+  display: flex;
+  align-items: stretch;
+  margin-top: 2px;
+  padding-left: 12px;
+}
+
+.groupMemberIndent {
+  width: 2px;
+  background: rgba(127, 0, 255, 0.3);
+  border-radius: 1px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.layerCardInGroup {
+  flex: 1;
+  border-color: rgba(127, 0, 255, 0.2) !important;
+}
+
+/* ── Layer Checkbox ────────────────────────────────────────────────────────── */
+.layerCheck {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  margin-right: 2px;
+}

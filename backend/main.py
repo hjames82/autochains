@@ -507,6 +507,7 @@ def job_status(job_id: str):
         }
     if job["status"] == "error":
         resp["error"] = job.get("error")
+        resp["traceback"] = job.get("traceback")
 
     return resp
 

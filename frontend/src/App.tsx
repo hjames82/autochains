@@ -25,6 +25,7 @@ export default function App() {
   const [jobStatus, setJobStatus] = useState<JobStatus>('idle')
   const [jobLogs, setJobLogs] = useState<string[]>([])
   const [jobError, setJobError] = useState<string | null>(null)
+  const [jobTraceback, setJobTraceback] = useState<string | null>(null)
   const [modelUrl, setModelUrl] = useState<string | null>(null)
   const [stlUrl, setStlUrl] = useState<string | null>(null)
   const [stats, setStats] = useState<Record<string, unknown> | null>(null)
@@ -63,6 +64,7 @@ export default function App() {
     setJobStatus('idle')
     setJobLogs([])
     setJobError(null)
+    setJobTraceback(null)
     if (modelUrl) URL.revokeObjectURL(modelUrl)
     setModelUrl(null)
     setStlUrl(null)
@@ -87,6 +89,7 @@ export default function App() {
           clearInterval(pollRef.current!)
           setJobStatus('error')
           setJobError(data.error ?? 'Unknown error')
+          setJobTraceback(data.traceback ?? null)
         } else {
           setJobStatus(data.status as JobStatus)
         }
@@ -156,7 +159,7 @@ export default function App() {
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [])
 
-  const state: AppState = { layers, scale, mode, jobId, jobStatus, jobLogs, jobError, modelUrl, stlUrl, stats }
+  const state: AppState = { layers, scale, mode, jobId, jobStatus, jobLogs, jobError, jobTraceback, modelUrl, stlUrl, stats }
 
   return (
     <ErrorBoundary>

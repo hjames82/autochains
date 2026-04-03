@@ -367,3 +367,9 @@
   cursor: pointer;
   padding: 1px;
 }
+
+.groupLabelBadge {
+  display: inline-flex;
+  align-items: center;
+  color: #c084fc;
+}

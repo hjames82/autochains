@@ -390,6 +390,7 @@ function MaterialEditor({
 interface Props {
   layer: CadLayerState
   allLayers: CadLayerState[]
+  groupLabel?: string
   onAddFeature: (type: CadFeatureType) => void
   onRemoveFeature: (featId: string) => void
   onUpdateFeature: (featId: string, updates: Partial<CadFeature>) => void
@@ -398,17 +399,27 @@ interface Props {
 }
 
 export default function ToolPanel({
-  layer, allLayers,
+  layer, allLayers, groupLabel,
   onAddFeature, onRemoveFeature, onUpdateFeature, onMoveFeature, onUpdateMaterial,
 }: Props) {
   return (
     <div className={styles.panel}>
-      {/* Layer info */}
+      {/* Layer/Group info */}
       <div className={styles.layerHeader}>
         <div className={styles.layerSwatch} style={{ background: layer.color }} />
         <div>
-          <div className={styles.layerTitle}>{layer.name}</div>
-          <div className={styles.layerSub}>{layer.features.length} operation{layer.features.length !== 1 ? 's' : ''}</div>
+          <div className={styles.layerTitle}>
+            {groupLabel ? (
+              <span className={styles.groupLabelBadge}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ marginRight: 4 }}>
+                  <rect x="2" y="3" width="20" height="14" rx="2"/>
+                  <path d="M8 21h8M12 17v4"/>
+                </svg>
+                {layer.name}
+              </span>
+            ) : layer.name}
+          </div>
+          <div className={styles.layerSub}>{layer.features.length} operation{layer.features.length !== 1 ? 's' : ''}{groupLabel ? ' applied to all members' : ''}</div>
         </div>
       </div>
 
