@@ -139,6 +139,12 @@ function LayerCard({ layer, expanded, onToggle, onRemove, onUpdateParam }: CardP
 
   return (
     <div className={`${styles.layerCard} ${expanded ? styles.layerCardExpanded : ''}`}>
+      {layer.svgPreview && (
+        <div
+          className={styles.layerThumb}
+          dangerouslySetInnerHTML={{ __html: layer.svgPreview }}
+        />
+      )}
       <div className={styles.cardRow} onClick={onToggle} role="button" tabIndex={0}
         onKeyDown={e => e.key === 'Enter' && onToggle()}>
         <div className={styles.colorSwatch} style={{ background: hexColor }} />

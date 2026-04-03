@@ -14,6 +14,7 @@ export interface LayerFile {
   file: File
   params: LayerParams
   sortKey: number
+  svgPreview?: string   // inline SVG HTML thumbnail from backend analysis
 }
 
 export type JobStatus = 'idle' | 'pending' | 'running' | 'done' | 'error'

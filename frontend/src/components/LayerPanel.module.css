@@ -363,3 +363,23 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── Layer SVG thumbnail ────────────────────────────────────────────────────── */
+.layerThumb {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 4px 4px 0 0;
+  background: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 0;
+  max-height: 80px;
+}
+
+.layerThumb svg {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 76px;
+  display: block;
+}

@@ -58,11 +58,18 @@ export default function App() {
     const unnamed = svgs.filter(f => !f.name.includes('lvl='))
 
     const filesToAdd: File[] = [...named]
+    // Map from reconstructed filename → svg_preview HTML (for thumbnails)
+    const previewMap = new Map<string, string>()
+    // The original file to share with CAD Workspace (never a reconstructed layer)
+    let originalForCad: File | null = named[0] ?? null
 
     if (unnamed.length > 0) {
       setClassicAnalyzing(true)
       try {
         for (const svgFile of unnamed) {
+          // The first unnamed file is the one to share with CAD Workspace
+          if (!originalForCad) originalForCad = svgFile
+
           const fd = new FormData()
           fd.append('file', svgFile)
           const r = await fetch('/api/analyze-svg', { method: 'POST', body: fd })
@@ -84,7 +91,9 @@ export default function App() {
               const filename = `lvl=${lvl}__sem=${sem}__rol=base__hex=${hex}.svg`
               const svgContent = buildLayerSvg(layer.paths, layer.color, viewbox)
               const blob = new Blob([svgContent], { type: 'image/svg+xml' })
-              filesToAdd.push(new File([blob], filename, { type: 'image/svg+xml' }))
+              const file = new File([blob], filename, { type: 'image/svg+xml' })
+              filesToAdd.push(file)
+              if (layer.svg_preview) previewMap.set(filename, layer.svg_preview)
             })
           }
         }
@@ -96,12 +105,17 @@ export default function App() {
     }
 
     if (!filesToAdd.length) return
-    setSharedSvgFile(filesToAdd[0])
+    // Share the ORIGINAL file with CAD Workspace, not a reconstructed layer slice
+    if (originalForCad) setSharedSvgFile(originalForCad)
     setLayers(prev => {
       const existingIds = new Set(prev.map(l => l.file.name))
       const newEntries = filesToAdd
         .filter(f => !existingIds.has(f.name))
-        .map(makeLayerFile)
+        .map(f => {
+          const lf = makeLayerFile(f)
+          const preview = previewMap.get(f.name)
+          return preview ? { ...lf, svgPreview: preview } : lf
+        })
       const merged = [...prev, ...newEntries]
       merged.sort((a, b) => a.sortKey - b.sortKey)
       return merged
